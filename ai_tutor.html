@@ -1,0 +1,1142 @@
+
+    <!DOCTYPE html>
+    <html lang="zh-CN">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>AI助教 - 卷积核微课</title>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@400;600;700&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+        <style>
+            :root {
+                --bg: #FFF4E6;
+                --c-coral: #C2410C;
+                --c-mint: #B45309;
+                --c-violet: #9A3412;
+                --c-yellow: #D97706;
+                --text-main: #1F2937;
+                --text-muted: #6B7280;
+                --surface: rgba(31,41,55,0.06);
+                --surface-2: rgba(31,41,55,0.10);
+                --border: rgba(31,41,55,0.14);
+                --border-2: rgba(31,41,55,0.20);
+                --shadow: 0 20px 40px rgba(17,24,39,0.14);
+            }
+            * { box-sizing: border-box; margin: 0; padding: 0; }
+            html, body {
+                font-family: 'Nunito', 'PingFang SC', -apple-system, sans-serif;
+                background-color: var(--bg);
+                height: 100vh;
+                overflow: hidden;
+                color: var(--text-main);
+            }
+            .container {
+                height: 100vh;
+                max-width: 1600px;
+                margin: 0 auto;
+                padding: 0 20px 20px 20px;
+                display: flex;
+                flex-direction: column;
+            }
+            .header-bar {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 12px 0;
+                border-bottom: 1px solid var(--border);
+                flex-shrink: 0;
+                position: relative;
+            }
+            .header-bar h1 {
+                font-family: 'Fredoka', 'PingFang SC', sans-serif;
+                font-size: 1.3rem;
+                font-weight: 600;
+                color: var(--c-mint);
+            }
+            .header h1 {
+                font-family: 'Fredoka', 'PingFang SC', sans-serif;
+                font-size: 2rem;
+                margin-bottom: 10px;
+                color: var(--text-main);
+            }
+            .header h1 i { color: var(--c-mint); margin-right: 10px; }
+            .back-link {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                color: var(--text-muted);
+                text-decoration: none;
+                margin-bottom: 20px;
+                transition: 0.2s;
+            }
+            .back-link:hover { color: var(--c-yellow); }
+            .chat-messages {
+                flex: 1;
+                overflow-y: auto;
+                padding: 20px 0;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+            .message {
+                max-width: 92%;
+                padding: 12px 16px;
+                border-radius: 12px;
+                line-height: 1.6;
+                font-size: 0.95rem;
+            }
+            .message.user {
+                align-self: flex-end;
+                background: rgba(217,119,6,0.15);
+                border-bottom-right-radius: 4px;
+                border: 1px solid rgba(217,119,6,0.30);
+                color: var(--text-main);
+            }
+            .message.assistant {
+                align-self: flex-start;
+                background: rgba(180,83,9,0.08);
+                border-bottom-left-radius: 4px;
+                border: 1px solid rgba(180,83,9,0.18);
+                color: var(--text-main);
+            }
+            .message .avatar {
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                margin-right: 10px;
+                vertical-align: middle;
+            }
+            .message.user .avatar {
+                background: rgba(217,119,6,0.20);
+                color: var(--c-yellow);
+            }
+            .message.assistant .avatar {
+                background: rgba(180,83,9,0.18);
+                color: var(--c-mint);
+            }
+            .chat-input-area {
+                padding: 16px 0 0 0;
+                border-top: 1px solid var(--border);
+                display: flex;
+                gap: 12px;
+            }
+            .chat-input {
+                flex: 1;
+                padding: 14px 20px;
+                border: 1px solid var(--border-2);
+                border-radius: 12px;
+                background: var(--surface);
+                color: var(--text-main);
+                font-size: 1rem;
+                outline: none;
+                transition: 0.2s;
+                font-family: 'Nunito', sans-serif;
+            }
+            .chat-input::placeholder { color: var(--text-muted); }
+            .chat-input:focus { border-color: var(--c-yellow); }
+            .send-btn {
+                padding: 14px 28px;
+                background: linear-gradient(135deg, var(--c-mint), var(--c-violet));
+                border: none;
+                border-radius: 12px;
+                color: white;
+                font-size: 1rem;
+                font-weight: 700;
+                cursor: pointer;
+                transition: 0.2s;
+                font-family: 'Nunito', sans-serif;
+            }
+            .send-btn:hover { transform: scale(1.03); filter: brightness(1.1); }
+            .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+            .mic-btn {
+                padding: 14px 14px;
+                background: rgba(31,41,55,0.06);
+                border: 1px solid rgba(31,41,55,0.14);
+                border-radius: 12px;
+                color: #B45309;
+                cursor: pointer;
+                transition: 0.2s;
+                flex-shrink: 0;
+            }
+            .mic-btn:hover { background: rgba(180,83,9,0.12); }
+            .mic-btn.listening { background: rgba(194,65,12,0.15); color: #C2410C; animation: pulse-mic 1s ease-in-out infinite; }
+            @keyframes pulse-mic { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+            .no-api-key {
+                text-align: center;
+                padding: 60px 20px;
+            }
+            .no-api-key i {
+                font-size: 4rem;
+                color: var(--c-yellow);
+                margin-bottom: 20px;
+            }
+            .no-api-key h2 { margin-bottom: 10px; font-family: 'Fredoka', sans-serif; color: var(--c-mint); }
+            .no-api-key p { color: var(--text-muted); }
+            .loading {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                color: var(--text-muted);
+            }
+            .loading i {
+                animation: spin 1s linear infinite;
+            }
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+            .welcome-message {
+                text-align: center;
+                padding: 40px;
+                color: var(--text-muted);
+            }
+            .welcome-message i {
+                font-size: 3rem;
+                color: var(--c-mint);
+                margin-bottom: 20px;
+            }
+
+            /* 自定义滚动条样式 - 适配暖色主题 */
+            ::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+            }
+            ::-webkit-scrollbar-track {
+                background: rgba(31,41,55,0.04);
+                border-radius: 4px;
+            }
+            ::-webkit-scrollbar-thumb {
+                background: rgba(180,83,9,0.28);
+                border-radius: 4px;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                background: rgba(180,83,9,0.45);
+            }
+
+            /* 操作按钮区域 */
+            .chat-actions {
+                display: flex;
+                gap: 8px;
+                padding: 0 20px 10px;
+                justify-content: flex-end;
+            }
+            .action-btn {
+                padding: 6px 12px;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-radius: 6px;
+                color: var(--text-muted);
+                font-size: 0.85rem;
+                cursor: pointer;
+                transition: 0.2s;
+                font-family: 'Nunito', sans-serif;
+            }
+            .action-btn:hover {
+                background: rgba(180,83,9,0.10);
+                color: var(--c-mint);
+                border-color: rgba(180,83,9,0.30);
+            }
+
+            /* 响应式适配 */
+            @media (max-width: 768px) {
+                .container {
+                    padding: 10px;
+                }
+                .header h1 {
+                    font-size: 1.5rem;
+                }
+                .chat-messages {
+                    padding: 15px;
+                }
+                .message {
+                    max-width: 95%;
+                    padding: 10px 14px;
+                    font-size: 0.9rem;
+                }
+                .chat-input-area {
+                    padding: 15px 10px;
+                }
+                .send-btn {
+                    padding: 12px 20px;
+                }
+                .chat-actions {
+                    padding: 0 10px 10px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+    
+            <div class="header-bar">
+                <a href="/" class="back-link" style="position: absolute; left: 0; color: #6B7280; text-decoration: none; transition: 0.2s;"><i class="fas fa-arrow-left"></i> 返回首页</a>
+                <h1>AI助手</h1>
+            </div>
+            <div class="chat-messages" id="messages">
+            </div>
+            <div class="chat-actions" style="padding: 10px 0; justify-content: flex-end; gap: 8px;">
+                <button class="action-btn" onclick="openVlabModal('tutor')" style="background:linear-gradient(135deg,#00b4d8,#0077b6);"><i class="fas fa-file-export"></i> 选择导出</button>
+                <button class="action-btn" onclick="clearChat()"><i class="fas fa-trash"></i> 清空对话</button>
+                <button class="action-btn" onclick="copyLastAnswer()"><i class="fas fa-copy"></i> 复制最后回复</button>
+            </div>
+            <div class="chat-input-area" style="padding: 0 0 16px 0;">
+                    <input type="text" class="chat-input" id="userInput"
+                           placeholder="输入你关于卷积核/计算机视觉的问题..." autofocus>
+                    <button class="mic-btn" id="micBtnTutor" onclick="startVoiceInputTutor()" title="语音提问"><i class="fas fa-microphone"></i></button>
+                    <button class="send-btn" onclick="sendMessage()">
+                        <i class="fas fa-paper-plane"></i> 发送
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const messagesDiv = document.getElementById('messages');
+            const userInput = document.getElementById('userInput');
+            const sendBtn = document.querySelector('.send-btn');
+
+            // 语音提问
+            function startVoiceInputTutor() {
+                const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+                const btn = document.getElementById('micBtnTutor');
+                if (!SR) { alert('请使用 Chrome 或 Edge 浏览器以使用语音功能'); return; }
+                const rec = new SR();
+                rec.lang = 'zh-CN'; rec.interimResults = false;
+                btn.classList.add('listening');
+                btn.innerHTML = '<i class="fas fa-circle" style="color:#C2410C"></i>';
+                rec.onresult = (e) => { userInput.value = e.results[0][0].transcript; userInput.focus(); };
+                rec.onerror = (e) => { if (e.error !== 'no-speech') alert('识别失败: ' + e.error); };
+                rec.onend = () => { btn.classList.remove('listening'); btn.innerHTML = '<i class="fas fa-microphone"></i>'; };
+                rec.start();
+            }
+
+            userInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+
+            async function sendMessage() {
+                const message = userInput.value.trim();
+                if (!message) return;
+
+                // 禁用发送按钮，防止重复提交
+                sendBtn.disabled = true;
+                userInput.disabled = true;
+
+                // 添加用户消息
+                addMessage(message, 'user');
+                userInput.value = '';
+
+                // 显示加载状态（跳过Markdown解析，直接显示HTML）
+                const loadingMsg = addMessage('<div class="loading"><i class="fas fa-spinner"></i> AI思考中...</div>', 'assistant', true);
+
+                try {
+                    const response = await fetch('/ai-tutor/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message })
+                    });
+
+                    const data = await response.json();
+
+                    // 移除加载消息
+                    loadingMsg.remove();
+
+                    if (data.error) {
+                        addMessage('❌ 错误: ' + data.error, 'assistant');
+                    } else {
+                        addMessage(data.response, 'assistant');
+                    }
+                } catch (err) {
+                    loadingMsg.remove();
+                    addMessage('❌ 请求失败: ' + err.message, 'assistant');
+                } finally {
+                    // 恢复按钮状态
+                    sendBtn.disabled = false;
+                    userInput.disabled = false;
+                    userInput.focus();
+                }
+            }
+
+            // 增强版Markdown解析函数，支持公式、表格、引用等格式
+            function parseMarkdown(text) {
+                // 转义HTML防止XSS
+                text = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+                // 数学公式 $$...$$
+                text = text.replace(/\$\$(.*?)\$\$/g, '<div style="text-align:center; margin: 15px 0; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 8px; font-family: monospace, "Times New Roman"; font-size: 1.1rem;">$1</div>');
+                // 行内公式 $...$
+                text = text.replace(/\$(.*?)\$/g, '<span style="font-family: monospace, "Times New Roman"; font-style: italic;">$1</span>');
+
+                // **加粗**
+                text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                // *斜体*
+                text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+                // 标题层级
+                text = text.replace(/^#### (.*?)$/gm, '<h5 style="margin: 8px 0; color: #a855f7; font-size: 1rem;">$1</h5>');
+                text = text.replace(/^### (.*?)$/gm, '<h4 style="margin: 10px 0; color: #a855f7; font-size: 1.1rem;">$1</h4>');
+                text = text.replace(/^## (.*?)$/gm, '<h3 style="margin: 12px 0; color: #a855f7; font-size: 1.2rem;">$1</h3>');
+                text = text.replace(/^# (.*?)$/gm, '<h2 style="margin: 14px 0; color: #a855f7; font-size: 1.3rem;">$1</h2>');
+
+                // 表格解析 | 表头1 | 表头2 |
+                text = text.replace(/^\|(.*?)\|\s*$/gm, (match, row) => {
+                    const cells = row.split('|').map(cell => cell.trim()).filter(cell => cell);
+                    if (cells.length === 0) return match;
+                    return '<div style="display: grid; grid-template-columns: repeat(' + cells.length + ', 1fr); gap: 1px; background: rgba(255,255,255,0.2); margin: 10px 0; border-radius: 8px; overflow: hidden;">'
+                        + cells.map(cell => '<div style="background: rgba(168, 85, 247, 0.2); padding: 8px; text-align: center; font-weight: bold;">' + cell + '</div>').join('')
+                        + '</div>';
+                });
+                // 表格内容行
+                text = text.replace(/^\|(?!.*:-)(.*?)\|\s*$/gm, (match, row) => {
+                    const cells = row.split('|').map(cell => cell.trim()).filter(cell => cell);
+                    if (cells.length === 0 || row.includes('---')) return '';
+                    return '<div style="display: grid; grid-template-columns: repeat(' + cells.length + ', 1fr); gap: 1px; background: rgba(255,255,255,0.2); margin-top: -1px;">'
+                        + cells.map(cell => '<div style="background: rgba(255,255,255,0.05); padding: 8px; text-align: center;">' + cell + '</div>').join('')
+                        + '</div>';
+                });
+
+                // 引用块 > 内容
+                text = text.replace(/^> (.*?)$/gm, '<blockquote style="margin: 10px 0; padding: 10px 15px; border-left: 4px solid #a855f7; background: rgba(168, 85, 247, 0.1); border-radius: 0 8px 8px 0;">$1</blockquote>');
+
+                // 有序列表 1. 2.
+                text = text.replace(/^(\d+)\. (.*?)$/gm, '<div style="margin: 6px 0 6px 24px; line-height: 1.7;"><strong>$1.</strong> $2</div>');
+
+                // 无序列表 - 或 *
+                text = text.replace(/^[-*] (.*?)$/gm, '<div style="margin: 6px 0 6px 24px; line-height: 1.7;">• $1</div>');
+
+                // 分割线 ---
+                text = text.replace(/^---\s*$/gm, '<hr style="border: none; height: 1px; background: rgba(255,255,255,0.1); margin: 15px 0;">');
+
+                // 换行（先处理列表、表格等块元素再换行）
+                text = text.replace(/\n/g, '<br>');
+
+                // 行内代码 `code`
+                text = text.replace(/`(.*?)`/g, '<code style="background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 6px; font-family: monospace; font-size: 0.9rem;">$1</code>');
+                // 代码块 ```...```
+                text = text.replace(/```([\s\S]*?)```/g, '<pre style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; overflow-x: auto; margin: 10px 0; font-family: monospace; font-size: 0.9rem; line-height: 1.6;">$1</pre>');
+
+                return text;
+            }
+
+            // 存储聊天历史，方便复制和清空
+            let chatHistory = [];
+
+            function addMessage(html, role, skipParse = false) {
+                const div = document.createElement('div');
+                div.className = 'message ' + role;
+                // AI消息需要解析Markdown，用户消息和loading不需要
+                const formattedContent = (role === 'assistant' && !skipParse) ? parseMarkdown(html) : html;
+
+                // 保存到历史
+                chatHistory.push({ role, content: html, formatted: formattedContent });
+
+                div.innerHTML = '<span class="avatar"><i class="fas fa-' + (role === 'user' ? 'user' : 'robot') + '"></i></span>' + formattedContent;
+
+                // 添加复制按钮，hover显示
+                if (role === 'assistant') {
+                    const copyBtn = document.createElement('button');
+                    copyBtn.className = 'copy-btn';
+                    copyBtn.innerHTML = '<i class="fas fa-copy"></i>';
+                    copyBtn.style.cssText = `
+                        position: absolute;
+                        top: 8px;
+                        right: 8px;
+                        background: rgba(255,255,255,0.1);
+                        border: none;
+                        color: #8892b0;
+                        padding: 4px 6px;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        opacity: 0;
+                        transition: opacity 0.2s;
+                        font-size: 0.75rem;
+                    `;
+                    copyBtn.onclick = () => copyToClipboard(html);
+                    div.style.position = 'relative';
+                    div.appendChild(copyBtn);
+
+                    // hover显示复制按钮
+                    div.addEventListener('mouseenter', () => copyBtn.style.opacity = '1');
+                    div.addEventListener('mouseleave', () => copyBtn.style.opacity = '0');
+                }
+
+                messagesDiv.appendChild(div);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                return div;
+            }
+
+            // 复制文本到剪贴板
+            function copyToClipboard(text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    // 显示复制成功提示
+                    const toast = document.createElement('div');
+                    toast.style.cssText = `
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        background: #10b981;
+                        color: white;
+                        padding: 10px 16px;
+                        border-radius: 8px;
+                        z-index: 9999;
+                        animation: slideIn 0.3s ease;
+                    `;
+                    toast.textContent = '✅ 已复制到剪贴板';
+                    document.body.appendChild(toast);
+                    setTimeout(() => toast.remove(), 2000);
+                }).catch(err => {
+                    alert('复制失败: ' + err);
+                });
+            }
+
+            // 清空对话
+            function clearChat() {
+                if (confirm('确定要清空所有聊天记录吗？')) {
+                    messagesDiv.innerHTML = ``;
+                    chatHistory = [];
+                }
+            }
+
+            // 复制最后一条AI回复
+            function copyLastAnswer() {
+                const lastAiMsg = chatHistory.slice().reverse().find(msg => msg.role === 'assistant');
+                if (lastAiMsg) {
+                    copyToClipboard(lastAiMsg.content);
+                } else {
+                    alert('没有可复制的AI回复');
+                }
+            }
+
+            // 导出聊天记录
+            function exportChat(type) {
+                if (chatHistory.length === 0) {
+                    alert('没有聊天记录可以导出');
+                    return;
+                }
+
+                if (type === 'pdf') {
+                    // 导出PDF - 直接使用当前页面的聊天内容
+                    const opt = {
+                        margin: 15,
+                        filename: 'AI对话记录.pdf',
+                        image: { type: 'jpeg', quality: 0.98 },
+                        html2canvas: { scale: 2, useCORS: true },
+                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                    };
+                    // 创建一个临时容器，包含标题和所有聊天内容
+                    const exportContainer = document.createElement('div');
+                    exportContainer.style.padding = '40px';
+                    exportContainer.style.fontFamily = '微软雅黑, sans-serif';
+                    exportContainer.style.background = 'white';
+                    exportContainer.style.color = '#333';
+                    exportContainer.style.maxWidth = '800px';
+                    exportContainer.style.margin = '0 auto';
+
+                    // 添加标题
+                    const header = document.createElement('div');
+                    header.style.textAlign = 'center';
+                    header.style.marginBottom = '30px';
+                    header.style.paddingBottom = '20px';
+                    header.style.borderBottom = '2px solid #a855f7';
+                    header.innerHTML = '<h1 style="color: #a855f7; margin: 0; font-size: 24px;">卷积核AI助手对话记录</h1>' +
+                        '<p style="color: #666; margin-top: 15px; font-size: 14px;">导出时间: ' + new Date().toLocaleString('zh-CN') + '</p>';
+                    exportContainer.appendChild(header);
+
+                    // 添加所有消息，过滤掉loading状态的消息并优化样式
+                    const messagesClone = document.getElementById('messages').cloneNode(true);
+                    // 移除所有包含loading的消息
+                    const loadingMessages = messagesClone.querySelectorAll('.loading');
+                    loadingMessages.forEach(loading => {
+                        const msgElement = loading.closest('.message');
+                        if (msgElement) msgElement.remove();
+                    });
+
+                    // 优化消息样式，适配打印
+                    const messages = messagesClone.querySelectorAll('.message');
+                    messages.forEach(msg => {
+                        msg.style.marginBottom = '20px';
+                        msg.style.padding = '15px';
+                        msg.style.borderRadius = '8px';
+                        msg.style.maxWidth = '85%';
+                        msg.style.pageBreakInside = 'avoid';
+                        msg.style.wordWrap = 'break-word';
+
+                        if (msg.classList.contains('user')) {
+                            msg.style.background = '#e8f0fe';
+                            msg.style.marginLeft = 'auto';
+                            const role = msg.querySelector('.role');
+                            if (role) role.style.color = '#2563eb';
+                        } else {
+                            msg.style.background = '#f5f0ff';
+                            msg.style.marginRight = 'auto';
+                            const role = msg.querySelector('.role');
+                            if (role) role.style.color = '#7c3aed';
+                        }
+
+                        // 优化角色样式
+                        const role = msg.querySelector('.role');
+                        if (role) {
+                            role.style.fontWeight = 'bold';
+                            role.style.marginBottom = '8px';
+                            role.style.fontSize = '14px';
+                        }
+
+                        // 优化内容样式
+                        const content = msg.querySelector('.content');
+                        if (content) {
+                            content.style.lineHeight = '1.8';
+                            content.style.fontSize = '14px';
+
+                            // 优化代码块样式
+                            const codeBlocks = content.querySelectorAll('code');
+                            codeBlocks.forEach(code => {
+                                code.style.background = 'rgba(0,0,0,0.05)';
+                                code.style.padding = '2px 8px';
+                                code.style.borderRadius = '4px';
+                                code.style.fontFamily = 'monospace';
+                                code.style.fontSize = '13px';
+                            });
+
+                            // 优化表格样式
+                            const tables = content.querySelectorAll('table');
+                            tables.forEach(table => {
+                                table.style.width = '100%';
+                                table.style.borderCollapse = 'collapse';
+                                table.style.margin = '10px 0';
+                                table.style.borderRadius = '8px';
+                                table.style.overflow = 'hidden';
+
+                                const cells = table.querySelectorAll('td, th');
+                                cells.forEach(cell => {
+                                    cell.style.border = '1px solid rgba(0,0,0,0.1)';
+                                    cell.style.padding = '8px';
+                                    cell.style.textAlign = 'left';
+                                });
+
+                                const headers = table.querySelectorAll('th');
+                                headers.forEach(th => {
+                                    th.style.background = 'rgba(168, 85, 247, 0.1)';
+                                    th.style.fontWeight = 'bold';
+                                });
+                            });
+                        }
+                    });
+
+                    exportContainer.appendChild(messagesClone);
+
+                    html2pdf().set(opt).from(exportContainer).save();
+
+                } else if (type === 'word') {
+                    // 导出Word - 生成原生HTML
+                    let content = '<!DOCTYPE html>\n' +
+                    '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">\n' +
+                    '<head>\n' +
+                    '<meta charset="UTF-8">\n' +
+                    '<title>卷积核AI助手对话记录</title>\n' +
+                    '<!--[if gte mso 9]>\n' +
+                    '<xml>\n' +
+                    '    <w:WordDocument>\n' +
+                    '        <w:View>Print</w:View>\n' +
+                    '        <w:Zoom>90</w:Zoom>\n' +
+                    '        <w:DoNotOptimizeForBrowser/>\n' +
+                    '    </w:WordDocument>\n' +
+                    '</xml>\n' +
+                    '<![endif]-->\n' +
+                    '<style>\n' +
+                    '    body { font-family: "微软雅黑", sans-serif; line-height: 1.8; padding: 40px; font-size: 14px; color: #333; max-width: 800px; margin: 0 auto; }\n' +
+                    '    .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #a855f7; padding-bottom: 20px; }\n' +
+                    '    .header h1 { color: #a855f7; margin: 0; font-size: 24px; }\n' +
+                    '    .header p { color: #666; margin-top: 15px; font-size: 14px; }\n' +
+                    '    .message { margin-bottom: 20px; padding: 15px; border-radius: 8px; max-width: 85%; page-break-inside: avoid; word-wrap: break-word; }\n' +
+                    '    .message.user { background: #e8f0fe; margin-left: auto; }\n' +
+                    '    .message.assistant { background: #f5f0ff; margin-right: auto; }\n' +
+                    '    .role { font-weight: bold; margin-bottom: 8px; font-size: 14px; }\n' +
+                    '    .user .role { color: #2563eb; }\n' +
+                    '    .assistant .role { color: #7c3aed; }\n' +
+                    '    .content { line-height: 1.8; font-size: 14px; }\n' +
+                    '    code { background: rgba(0,0,0,0.05); padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 13px; }\n' +
+                    '    table { width: 100%; border-collapse: collapse; margin: 10px 0; border-radius: 8px; overflow: hidden; }\n' +
+                    '    table td, table th { border: 1px solid rgba(0,0,0,0.1); padding: 8px; text-align: left; }\n' +
+                    '    table th { background: rgba(168, 85, 247, 0.1); font-weight: bold; }\n' +
+                    '    img { max-width: 100%; border-radius: 8px; margin: 10px 0; }\n' +
+                    '    hr { border: none; height: 1px; background: rgba(0,0,0,0.1); margin: 15px 0; }\n' +
+                    '    h4 { margin: 10px 0; color: #a855f7; font-size: 1.1rem; }\n' +
+                    '</style>\n' +
+                    '</head>\n' +
+                    '<body>\n' +
+                    '<div class="header">\n' +
+                    '    <h1>卷积核AI助手对话记录</h1>\n' +
+                    '    <p>导出时间: ' + new Date().toLocaleString('zh-CN') + '</p>\n' +
+                    '</div>\n';
+
+                    // 添加聊天内容，过滤掉loading状态的消息
+                    chatHistory.forEach(msg => {
+                        const roleName = msg.role === 'user' ? '你' : 'AI助手';
+                        const msgContent = msg.formatted || msg.content;
+                        // 跳过包含loading的消息
+                        if (msgContent.includes('AI思考中...') && msgContent.includes('fa-spinner')) {
+                            return;
+                        }
+                        content += '<div class="message ' + msg.role + '">\n' +
+                            '    <div class="role">' + roleName + '</div>\n' +
+                            '    <div class="content">' + msgContent + '</div>\n' +
+                            '</div>\n';
+                    });
+
+                    content += '</body>\n</html>';
+
+                    // 导出Word，使用正确的编码
+                    const blob = new Blob([content], { type: 'application/msword;charset=utf-8;' });
+                    saveAs(blob, 'AI对话记录_' + new Date().getTime() + '.doc');
+                }
+            }
+
+            // 滑入动画
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(style);
+
+            // ===== AI助教 localStorage 保存逻辑（供跨页面导出读取）=====
+            const _origAddMsg = addMessage;
+            addMessage = function(html, role, skipParse) {
+                const result = _origAddMsg(html, role, skipParse);
+                setTimeout(function() {
+                    try {
+                        var exportable = chatHistory.filter(function(m) {
+                            return !(m.content||'').includes('fa-spinner');
+                        }).map(function(m) {
+                            return { role: m.role, content: m.formatted || m.content };
+                        });
+                        localStorage.setItem('vlab_tutor_chat', JSON.stringify(exportable));
+                    } catch(e) {}
+                }, 80);
+                return result;
+            };
+
+            // 供共享弹窗打开前调用
+            window._vlabSavePage = function(pageId) {
+                if (pageId === 'tutor') {
+                    try {
+                        var exportable = chatHistory.filter(function(m) {
+                            return !(m.content||'').includes('fa-spinner');
+                        }).map(function(m) {
+                            return { role: m.role, content: m.formatted || m.content };
+                        });
+                        localStorage.setItem('vlab_tutor_chat', JSON.stringify(exportable));
+                    } catch(e) {}
+                }
+            };
+        </script>
+    </body>
+    
+<!-- ===== 跨页面统一导出弹窗 ===== -->
+<div id="vlabModal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);">
+  <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#141e33;border:1px solid rgba(255,255,255,0.1);border-radius:20px;width:min(580px,94vw);max-height:90vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,0.65);color:white;font-family:'Inter',-apple-system,'PingFang SC',sans-serif;">
+
+    <!-- 头部 sticky -->
+    <div style="padding:22px 28px 16px;border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#141e33;border-radius:20px 20px 0 0;z-index:1;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:38px;height:38px;background:linear-gradient(135deg,#00d9ff,#0073ff);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="fas fa-file-export"></i>
+        </div>
+        <div>
+          <div style="font-size:1.1rem;font-weight:700;letter-spacing:-0.3px;">选择导出内容</div>
+          <div style="font-size:0.77rem;color:#64748b;margin-top:1px;">可跨页面自由组合任意模块</div>
+        </div>
+      </div>
+      <button onclick="vlabCloseModal()" style="background:rgba(255,255,255,0.06);border:none;color:#94a3b8;cursor:pointer;width:32px;height:32px;border-radius:8px;font-size:1rem;">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- 模块列表 -->
+    <div id="vlabModuleList" style="padding:16px 28px 4px;"></div>
+
+    <!-- 格式选择 -->
+    <div style="padding:0 28px 16px;">
+      <div style="background:rgba(255,255,255,0.04);border-radius:14px;padding:16px;">
+        <p style="color:#64748b;font-size:0.78rem;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px;">📄 导出格式</p>
+        <div style="display:flex;gap:12px;">
+          <div id="vlabFmtWord" onclick="vlabSelectFmt('word')" style="flex:1;border:2px solid #00d9ff;background:rgba(0,217,255,0.07);border-radius:12px;padding:14px;text-align:center;cursor:pointer;transition:0.25s;">
+            <i class="fas fa-file-word" style="color:#2b7cd3;font-size:1.6rem;display:block;margin-bottom:7px;"></i>
+            <div style="font-weight:600;font-size:0.88rem;">Word 文档</div>
+            <div style="color:#64748b;font-size:0.73rem;margin-top:3px;">.doc，可直接编辑</div>
+          </div>
+          <div id="vlabFmtPDF" onclick="vlabSelectFmt('pdf')" style="flex:1;border:2px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);border-radius:12px;padding:14px;text-align:center;cursor:pointer;transition:0.25s;">
+            <i class="fas fa-file-pdf" style="color:#c9302c;font-size:1.6rem;display:block;margin-bottom:7px;"></i>
+            <div style="font-weight:600;font-size:0.88rem;">PDF 文件</div>
+            <div style="color:#64748b;font-size:0.73rem;margin-top:3px;">浏览器打印另存</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div style="padding:0 28px 20px;display:flex;gap:12px;">
+      <button onclick="vlabCloseModal()" style="flex:1;padding:13px;border:1px solid rgba(255,255,255,0.1);background:none;border-radius:12px;color:#94a3b8;cursor:pointer;font-size:0.95rem;">取消</button>
+      <button onclick="vlabDoExport()" id="vlabExportBtn" style="flex:2.5;padding:13px;border:none;background:linear-gradient(135deg,#00d9ff,#0073ff);border-radius:12px;color:white;cursor:pointer;font-size:0.95rem;font-weight:600;">
+        <i class="fas fa-download"></i> 开始导出
+      </button>
+    </div>
+    <p id="vlabExportMsg" style="text-align:center;font-size:0.85rem;padding:0 28px 20px;min-height:20px;color:#64748b;"></p>
+  </div>
+</div>
+
+<style>
+.vlab-section-label{font-size:.73rem;color:#475569;text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin:14px 0 8px;display:flex;align-items:center;gap:6px;}
+.vlab-mod-card{background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:.2s;user-select:none;}
+.vlab-mod-card.has-data:hover{background:rgba(255,255,255,0.07);}
+.vlab-mod-card.selected{border-color:rgba(0,217,255,.4);background:rgba(0,217,255,.06);}
+.vlab-mod-card.no-data{opacity:.4;cursor:default;}
+.vlab-mod-row{display:flex;align-items:center;gap:10px;}
+.vlab-checkbox{width:18px;height:18px;border-radius:5px;border:2px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s;}
+.vlab-checkbox.checked{background:#00d9ff;border-color:#00d9ff;color:#000;font-size:.72rem;font-weight:800;}
+.vlab-mod-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.88rem;flex-shrink:0;}
+</style>
+
+<script>
+(function(){
+/* ======== 跨页面统一导出弹窗核心逻辑 ======== */
+window._vlabCurrentPage='unknown';
+window._vlabExportFmt='word';
+window._vlabState={};
+
+const VLAB_MODS=[
+  {id:'screenshot_notes', label:'首页截图笔记',        icon:'fa-camera',         bg:'#0e3f6e',color:'#00d9ff',page:'首页',     key:'convolutionKernelNotes',         kind:'json_array', secType:'screenshot_notes'},
+  {id:'home_chat',        label:'首页 AI 学习助手对话', icon:'fa-robot',          bg:'#3b1a6e',color:'#a855f7',page:'首页',     key:'vlab_home_chat',                  kind:'json_array', secType:'ai_chat'},
+  {id:'study_notes',      label:'课后学习笔记',          icon:'fa-pen-nib',        bg:'#063e28',color:'#22c55e',page:'课后习题',key:'convolution_notes',               kind:'html_string',secType:'study_notes'},
+  {id:'wrong_questions',  label:'课后错题本',            icon:'fa-book-open',      bg:'#4a1010',color:'#ef4444',page:'课后习题',key:'convolution_wrong_questions',     kind:'json_array', secType:'wrong_questions'},
+  {id:'study_chat',       label:'课后 AI 对话',          icon:'fa-comments',       bg:'#3d2a00',color:'#f59e0b',page:'课后习题',key:'vlab_study_chat',                 kind:'json_array', secType:'ai_chat'},
+  {id:'tutor_chat',       label:'AI 助教对话',           icon:'fa-graduation-cap', bg:'#1a1a4a',color:'#6366f1',page:'AI助教', key:'vlab_tutor_chat',                 kind:'json_array', secType:'ai_chat'},
+];
+
+function _getData(mod){
+  const raw=localStorage.getItem(mod.key);
+  if(!raw)return null;
+  if(mod.kind==='json_array'){try{const d=JSON.parse(raw);return d&&d.length>0?d:null;}catch(e){return null;}}
+  return raw.trim()?raw:null;
+}
+function _count(mod){
+  const d=_getData(mod);
+  if(!d)return 0;
+  return Array.isArray(d)?d.length:1;
+}
+
+window.vlabSelectFmt=function(fmt){
+  window._vlabExportFmt=fmt;
+  const w=document.getElementById('vlabFmtWord'),p=document.getElementById('vlabFmtPDF');
+  if(fmt==='word'){
+    w.style.border='2px solid #00d9ff';w.style.background='rgba(0,217,255,.07)';
+    p.style.border='2px solid rgba(255,255,255,.1)';p.style.background='rgba(255,255,255,.03)';
+  }else{
+    p.style.border='2px solid #c9302c';p.style.background='rgba(201,48,44,.07)';
+    w.style.border='2px solid rgba(255,255,255,.1)';w.style.background='rgba(255,255,255,.03)';
+  }
+};
+
+window._vlabToggle=function(id){
+  const s=window._vlabState[id];
+  if(!s||s.disabled)return;
+  s.checked=!s.checked;
+  const card=document.getElementById('vlabCard_'+id);
+  const chk=document.getElementById('vlabChk_'+id);
+  if(s.checked){card.classList.add('selected');chk.classList.add('checked');chk.textContent='✓';}
+  else{card.classList.remove('selected');chk.classList.remove('checked');chk.textContent='';}
+};
+
+function _buildModuleList(){
+  window._vlabState={};
+  const groups={};
+  VLAB_MODS.forEach(m=>{if(!groups[m.page])groups[m.page]=[];groups[m.page].push(m);});
+  let html='';
+  Object.keys(groups).forEach(page=>{
+    html+=`<div class="vlab-section-label"><i class="fas fa-layer-group"></i>${page}</div>`;
+    groups[page].forEach(mod=>{
+      const cnt=_count(mod),has=cnt>0;
+      const badge=Array.isArray(_getData(mod))?`${cnt} 条`:(has?'有内容':'暂无');
+      window._vlabState[mod.id]={checked:has,disabled:!has};
+      html+=`<div class="vlab-mod-card ${has?'has-data selected':'no-data'}" id="vlabCard_${mod.id}" onclick="_vlabToggle('${mod.id}')">
+        <div class="vlab-mod-row">
+          <div class="vlab-checkbox ${has?'checked':''}" id="vlabChk_${mod.id}">${has?'✓':''}</div>
+          <div class="vlab-mod-icon" style="background:${mod.bg};color:${mod.color};"><i class="fas ${mod.icon}"></i></div>
+          <div style="flex:1;">
+            <div style="font-size:.88rem;font-weight:600;color:#e2e8f0;">${mod.label}</div>
+            <div style="font-size:.75rem;color:${has?mod.color:'#475569'};margin-top:2px;">${has?badge:'暂无数据'}</div>
+          </div>
+          ${!has?'<div style="font-size:.7rem;color:#475569;background:rgba(255,255,255,.05);padding:3px 8px;border-radius:20px;">未记录</div>':''}
+        </div>
+      </div>`;
+    });
+  });
+  document.getElementById('vlabModuleList').innerHTML=html;
+}
+
+window.openVlabModal=function(pageId){
+  window._vlabCurrentPage=pageId;
+  if(typeof window._vlabSavePage==='function')window._vlabSavePage(pageId);
+  _buildModuleList();
+  document.getElementById('vlabExportMsg').textContent='';
+  document.getElementById('vlabModal').style.display='block';
+  vlabSelectFmt('word');
+};
+
+window.vlabCloseModal=function(){
+  document.getElementById('vlabModal').style.display='none';
+};
+
+window.vlabDoExport=async function(){
+  const btn=document.getElementById('vlabExportBtn');
+  const msg=document.getElementById('vlabExportMsg');
+  const sections=[];
+  VLAB_MODS.forEach(mod=>{
+    if(!(window._vlabState[mod.id]&&window._vlabState[mod.id].checked))return;
+    const data=_getData(mod);
+    if(!data)return;
+    if(mod.secType==='screenshot_notes')sections.push({type:'screenshot_notes',items:data});
+    else if(mod.secType==='ai_chat')sections.push({type:'ai_chat',messages:data,label:mod.label});
+    else if(mod.secType==='wrong_questions')sections.push({type:'wrong_questions',items:data});
+    else if(mod.secType==='study_notes')sections.push({type:'study_notes',content:data});
+  });
+  if(!sections.length){
+    msg.textContent='⚠️ 请至少勾选一个有内容的模块';
+    msg.style.color='#f87171';return;
+  }
+  btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> 生成中...';msg.textContent='';
+  try{
+    const r=await fetch('/api/export-combined',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({format:window._vlabExportFmt,sections})});
+    const d=await r.json();
+    if(d.success){
+      window.open(d.url,'_blank');
+      msg.textContent=window._vlabExportFmt==='pdf'?'✅ 已打开，请按 Ctrl+P → 另存为 PDF':'✅ 文档已生成，请在新标签页另存';
+      msg.style.color='#4ade80';
+    }else{msg.textContent='❌ 导出失败：'+(d.error||'未知错误');msg.style.color='#f87171';}
+  }catch(e){msg.textContent='❌ 网络错误：'+e.message;msg.style.color='#f87171';}
+  finally{btn.disabled=false;btn.innerHTML='<i class="fas fa-download"></i> 开始导出';}
+};
+
+document.getElementById('vlabModal').addEventListener('click',function(e){if(e.target===this)vlabCloseModal();});
+})();
+</script>
+
+<div style="position:fixed;bottom:28px;right:28px;z-index:9998;">
+  <button onclick="openVlabModal('tutor')"
+          style="display:flex;align-items:center;gap:8px;padding:13px 22px;background:linear-gradient(135deg,#00d9ff,#0073ff);border:none;border-radius:50px;color:white;font-size:.95rem;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(0,115,255,.4);transition:.25s;"
+          onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 12px 32px rgba(0,115,255,.5)'"
+          onmouseout="this.style.transform='';this.style.boxShadow='0 8px 24px rgba(0,115,255,.4)'">
+    <i class="fas fa-file-export"></i> 选择导出
+  </button>
+</div>
+
+</html>
+
+<!-- ===== 跨页面统一导出弹窗 ===== -->
+<div id="vlabModal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);">
+  <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#141e33;border:1px solid rgba(255,255,255,0.1);border-radius:20px;width:min(580px,94vw);max-height:90vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,0.65);color:white;font-family:'Inter',-apple-system,'PingFang SC',sans-serif;">
+
+    <!-- 头部 sticky -->
+    <div style="padding:22px 28px 16px;border-bottom:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#141e33;border-radius:20px 20px 0 0;z-index:1;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:38px;height:38px;background:linear-gradient(135deg,#00d9ff,#0073ff);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <i class="fas fa-file-export"></i>
+        </div>
+        <div>
+          <div style="font-size:1.1rem;font-weight:700;letter-spacing:-0.3px;">选择导出内容</div>
+          <div style="font-size:0.77rem;color:#64748b;margin-top:1px;">可跨页面自由组合任意模块</div>
+        </div>
+      </div>
+      <button onclick="vlabCloseModal()" style="background:rgba(255,255,255,0.06);border:none;color:#94a3b8;cursor:pointer;width:32px;height:32px;border-radius:8px;font-size:1rem;">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- 模块列表 -->
+    <div id="vlabModuleList" style="padding:16px 28px 4px;"></div>
+
+    <!-- 格式选择 -->
+    <div style="padding:0 28px 16px;">
+      <div style="background:rgba(255,255,255,0.04);border-radius:14px;padding:16px;">
+        <p style="color:#64748b;font-size:0.78rem;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px;">📄 导出格式</p>
+        <div style="display:flex;gap:12px;">
+          <div id="vlabFmtWord" onclick="vlabSelectFmt('word')" style="flex:1;border:2px solid #00d9ff;background:rgba(0,217,255,0.07);border-radius:12px;padding:14px;text-align:center;cursor:pointer;transition:0.25s;">
+            <i class="fas fa-file-word" style="color:#2b7cd3;font-size:1.6rem;display:block;margin-bottom:7px;"></i>
+            <div style="font-weight:600;font-size:0.88rem;">Word 文档</div>
+            <div style="color:#64748b;font-size:0.73rem;margin-top:3px;">.doc，可直接编辑</div>
+          </div>
+          <div id="vlabFmtPDF" onclick="vlabSelectFmt('pdf')" style="flex:1;border:2px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);border-radius:12px;padding:14px;text-align:center;cursor:pointer;transition:0.25s;">
+            <i class="fas fa-file-pdf" style="color:#c9302c;font-size:1.6rem;display:block;margin-bottom:7px;"></i>
+            <div style="font-weight:600;font-size:0.88rem;">PDF 文件</div>
+            <div style="color:#64748b;font-size:0.73rem;margin-top:3px;">浏览器打印另存</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 操作按钮 -->
+    <div style="padding:0 28px 20px;display:flex;gap:12px;">
+      <button onclick="vlabCloseModal()" style="flex:1;padding:13px;border:1px solid rgba(255,255,255,0.1);background:none;border-radius:12px;color:#94a3b8;cursor:pointer;font-size:0.95rem;">取消</button>
+      <button onclick="vlabDoExport()" id="vlabExportBtn" style="flex:2.5;padding:13px;border:none;background:linear-gradient(135deg,#00d9ff,#0073ff);border-radius:12px;color:white;cursor:pointer;font-size:0.95rem;font-weight:600;">
+        <i class="fas fa-download"></i> 开始导出
+      </button>
+    </div>
+    <p id="vlabExportMsg" style="text-align:center;font-size:0.85rem;padding:0 28px 20px;min-height:20px;color:#64748b;"></p>
+  </div>
+</div>
+
+<style>
+.vlab-section-label{font-size:.73rem;color:#475569;text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin:14px 0 8px;display:flex;align-items:center;gap:6px;}
+.vlab-mod-card{background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.07);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:.2s;user-select:none;}
+.vlab-mod-card.has-data:hover{background:rgba(255,255,255,0.07);}
+.vlab-mod-card.selected{border-color:rgba(0,217,255,.4);background:rgba(0,217,255,.06);}
+.vlab-mod-card.no-data{opacity:.4;cursor:default;}
+.vlab-mod-row{display:flex;align-items:center;gap:10px;}
+.vlab-checkbox{width:18px;height:18px;border-radius:5px;border:2px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s;}
+.vlab-checkbox.checked{background:#00d9ff;border-color:#00d9ff;color:#000;font-size:.72rem;font-weight:800;}
+.vlab-mod-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.88rem;flex-shrink:0;}
+</style>
+
+<script>
+(function(){
+/* ======== 跨页面统一导出弹窗核心逻辑 ======== */
+window._vlabCurrentPage='unknown';
+window._vlabExportFmt='word';
+window._vlabState={};
+
+const VLAB_MODS=[
+  {id:'screenshot_notes', label:'首页截图笔记',        icon:'fa-camera',         bg:'#0e3f6e',color:'#00d9ff',page:'首页',     key:'convolutionKernelNotes',         kind:'json_array', secType:'screenshot_notes'},
+  {id:'home_chat',        label:'首页 AI 学习助手对话', icon:'fa-robot',          bg:'#3b1a6e',color:'#a855f7',page:'首页',     key:'vlab_home_chat',                  kind:'json_array', secType:'ai_chat'},
+  {id:'study_notes',      label:'课后学习笔记',          icon:'fa-pen-nib',        bg:'#063e28',color:'#22c55e',page:'课后习题',key:'convolution_notes',               kind:'html_string',secType:'study_notes'},
+  {id:'wrong_questions',  label:'课后错题本',            icon:'fa-book-open',      bg:'#4a1010',color:'#ef4444',page:'课后习题',key:'convolution_wrong_questions',     kind:'json_array', secType:'wrong_questions'},
+  {id:'study_chat',       label:'课后 AI 对话',          icon:'fa-comments',       bg:'#3d2a00',color:'#f59e0b',page:'课后习题',key:'vlab_study_chat',                 kind:'json_array', secType:'ai_chat'},
+  {id:'tutor_chat',       label:'AI 助教对话',           icon:'fa-graduation-cap', bg:'#1a1a4a',color:'#6366f1',page:'AI助教', key:'vlab_tutor_chat',                 kind:'json_array', secType:'ai_chat'},
+];
+
+function _getData(mod){
+  const raw=localStorage.getItem(mod.key);
+  if(!raw)return null;
+  if(mod.kind==='json_array'){try{const d=JSON.parse(raw);return d&&d.length>0?d:null;}catch(e){return null;}}
+  return raw.trim()?raw:null;
+}
+function _count(mod){
+  const d=_getData(mod);
+  if(!d)return 0;
+  return Array.isArray(d)?d.length:1;
+}
+
+window.vlabSelectFmt=function(fmt){
+  window._vlabExportFmt=fmt;
+  const w=document.getElementById('vlabFmtWord'),p=document.getElementById('vlabFmtPDF');
+  if(fmt==='word'){
+    w.style.border='2px solid #00d9ff';w.style.background='rgba(0,217,255,.07)';
+    p.style.border='2px solid rgba(255,255,255,.1)';p.style.background='rgba(255,255,255,.03)';
+  }else{
+    p.style.border='2px solid #c9302c';p.style.background='rgba(201,48,44,.07)';
+    w.style.border='2px solid rgba(255,255,255,.1)';w.style.background='rgba(255,255,255,.03)';
+  }
+};
+
+window._vlabToggle=function(id){
+  const s=window._vlabState[id];
+  if(!s||s.disabled)return;
+  s.checked=!s.checked;
+  const card=document.getElementById('vlabCard_'+id);
+  const chk=document.getElementById('vlabChk_'+id);
+  if(s.checked){card.classList.add('selected');chk.classList.add('checked');chk.textContent='✓';}
+  else{card.classList.remove('selected');chk.classList.remove('checked');chk.textContent='';}
+};
+
+function _buildModuleList(){
+  window._vlabState={};
+  const groups={};
+  VLAB_MODS.forEach(m=>{if(!groups[m.page])groups[m.page]=[];groups[m.page].push(m);});
+  let html='';
+  Object.keys(groups).forEach(page=>{
+    html+=`<div class="vlab-section-label"><i class="fas fa-layer-group"></i>${page}</div>`;
+    groups[page].forEach(mod=>{
+      const cnt=_count(mod),has=cnt>0;
+      const badge=Array.isArray(_getData(mod))?`${cnt} 条`:(has?'有内容':'暂无');
+      window._vlabState[mod.id]={checked:has,disabled:!has};
+      html+=`<div class="vlab-mod-card ${has?'has-data selected':'no-data'}" id="vlabCard_${mod.id}" onclick="_vlabToggle('${mod.id}')">
+        <div class="vlab-mod-row">
+          <div class="vlab-checkbox ${has?'checked':''}" id="vlabChk_${mod.id}">${has?'✓':''}</div>
+          <div class="vlab-mod-icon" style="background:${mod.bg};color:${mod.color};"><i class="fas ${mod.icon}"></i></div>
+          <div style="flex:1;">
+            <div style="font-size:.88rem;font-weight:600;color:#e2e8f0;">${mod.label}</div>
+            <div style="font-size:.75rem;color:${has?mod.color:'#475569'};margin-top:2px;">${has?badge:'暂无数据'}</div>
+          </div>
+          ${!has?'<div style="font-size:.7rem;color:#475569;background:rgba(255,255,255,.05);padding:3px 8px;border-radius:20px;">未记录</div>':''}
+        </div>
+      </div>`;
+    });
+  });
+  document.getElementById('vlabModuleList').innerHTML=html;
+}
+
+window.openVlabModal=function(pageId){
+  window._vlabCurrentPage=pageId;
+  if(typeof window._vlabSavePage==='function')window._vlabSavePage(pageId);
+  _buildModuleList();
+  document.getElementById('vlabExportMsg').textContent='';
+  document.getElementById('vlabModal').style.display='block';
+  vlabSelectFmt('word');
+};
+
+window.vlabCloseModal=function(){
+  document.getElementById('vlabModal').style.display='none';
+};
+
+window.vlabDoExport=async function(){
+  const btn=document.getElementById('vlabExportBtn');
+  const msg=document.getElementById('vlabExportMsg');
+  const sections=[];
+  VLAB_MODS.forEach(mod=>{
+    if(!(window._vlabState[mod.id]&&window._vlabState[mod.id].checked))return;
+    const data=_getData(mod);
+    if(!data)return;
+    if(mod.secType==='screenshot_notes')sections.push({type:'screenshot_notes',items:data});
+    else if(mod.secType==='ai_chat')sections.push({type:'ai_chat',messages:data,label:mod.label});
+    else if(mod.secType==='wrong_questions')sections.push({type:'wrong_questions',items:data});
+    else if(mod.secType==='study_notes')sections.push({type:'study_notes',content:data});
+  });
+  if(!sections.length){
+    msg.textContent='⚠️ 请至少勾选一个有内容的模块';
+    msg.style.color='#f87171';return;
+  }
+  btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> 生成中...';msg.textContent='';
+  try{
+    const r=await fetch('/api/export-combined',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({format:window._vlabExportFmt,sections})});
+    const d=await r.json();
+    if(d.success){
+      window.open(d.url,'_blank');
+      msg.textContent=window._vlabExportFmt==='pdf'?'✅ 已打开，请按 Ctrl+P → 另存为 PDF':'✅ 文档已生成，请在新标签页另存';
+      msg.style.color='#4ade80';
+    }else{msg.textContent='❌ 导出失败：'+(d.error||'未知错误');msg.style.color='#f87171';}
+  }catch(e){msg.textContent='❌ 网络错误：'+e.message;msg.style.color='#f87171';}
+  finally{btn.disabled=false;btn.innerHTML='<i class="fas fa-download"></i> 开始导出';}
+};
+
+document.getElementById('vlabModal').addEventListener('click',function(e){if(e.target===this)vlabCloseModal();});
+})();
+</script>
+
+<div style="position:fixed;bottom:28px;right:28px;z-index:9998;">
+  <button onclick="openVlabModal('tutor')"
+          style="display:flex;align-items:center;gap:8px;padding:13px 22px;background:linear-gradient(135deg,#00d9ff,#0073ff);border:none;border-radius:50px;color:white;font-size:.95rem;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(0,115,255,.4);transition:.25s;"
+          onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 12px 32px rgba(0,115,255,.5)'"
+          onmouseout="this.style.transform='';this.style.boxShadow='0 8px 24px rgba(0,115,255,.4)'">
+    <i class="fas fa-file-export"></i> 选择导出
+  </button>
+</div>
+
+</html>
