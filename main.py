@@ -17,6 +17,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from dotenv import load_dotenv
 import requests
+import database
 
 # 加载环境变量
 load_dotenv()
@@ -3257,7 +3258,125 @@ async def export_combined(request: Request):
         return {"success": False, "error": str(e)}
 
 
+# ============ Vue前端支持路由 ============
+@app.get("/calculator-raw", response_class=HTMLResponse)
+async def calculator_raw():
+    """彩蛋页：科学计算器（原始HTML，供Vue iframe加载）"""
+    return _serve_static_page(CALCULATOR_FILE, "科学计算器")
+
+
+@app.get("/study-raw", response_class=HTMLResponse)
+async def study_raw():
+    """课后学习页面（含注入，供Vue iframe加载）"""
+    if not HTML_FILE.exists():
+        raise HTTPException(status_code=404, detail="学习资料文件不存在")
+
+    with open(HTML_FILE, 'r', encoding='utf-8') as f:
+        html_content = f.read()
+
+    # 注入：课后AI对话保存到 localStorage + _vlabSavePage 钩子
+    study_inject_script = r"""
+<script>
+(function(){
+  function _hookStudyChat() {
+    if (typeof addChatMessage !== 'function') {
+      setTimeout(_hookStudyChat, 200);
+      return;
+    }
+    const _orig = addChatMessage;
+    window.addChatMessage = function(content, role) {
+      const r = _orig.call(this, content, role);
+      setTimeout(function() {
+        try {
+          var hist = window.aiChatHistory || [];
+          var exportable = hist.filter(function(m) {
+            return !(m.content||'').includes('loading-dots');
+          });
+          localStorage.setItem('vlab_study_chat', JSON.stringify(exportable));
+        } catch(e) {}
+      }, 80);
+      return r;
+    };
+  }
+  _hookStudyChat();
+
+  window._vlabSavePage = function(pageId) {
+    if (pageId === 'study') {
+      try {
+        var hist = window.aiChatHistory || [];
+        var exportable = hist.filter(function(m) {
+          return !(m.content||'').includes('loading-dots');
+        });
+        localStorage.setItem('vlab_study_chat', JSON.stringify(exportable));
+      } catch(e) {}
+    }
+  };
+})();
+</script>
+"""
+    inject_block = (
+        study_inject_script
+        + get_shared_export_modal()
+        + get_shared_export_btn('study')
+    )
+    if '</body>' in html_content:
+        html_content = html_content.replace('</body>', inject_block + '\n</body>', 1)
+    else:
+        html_content += inject_block
+
+    return html_content
+
+
 # ============ 健康检查 ============
+# ============ 数据库 API ============
+USER_ID = "default"
+
+
+@app.post("/api/data/sync")
+async def api_data_sync(request: Request):
+    """前端上传 localStorage 数据到 MySQL"""
+    body = await request.json()
+    data_key = body.get("key", "")
+    data_value = body.get("value", "")
+    if not data_key:
+        return {"success": False, "error": "缺少 key"}
+    await database.save_user_data(USER_ID, data_key, json.dumps(data_value, ensure_ascii=False) if not isinstance(data_value, str) else data_value)
+    return {"success": True}
+
+
+@app.get("/api/data/load")
+async def api_data_load():
+    """从 MySQL 加载所有用户数据"""
+    data = await database.load_user_data(USER_ID)
+    result = {}
+    for key, value in data.items():
+        if key in database.USER_DATA_KEYS:
+            try:
+                result[key] = json.loads(value)
+            except (json.JSONDecodeError, TypeError):
+                result[key] = value
+    return {"success": True, "data": result}
+
+
+@app.post("/api/chat/sync")
+async def api_chat_sync(request: Request):
+    """全量同步聊天记录"""
+    body = await request.json()
+    context = body.get("context", "home")
+    messages = body.get("messages", [])
+    await database.sync_chat_messages(USER_ID, context, messages)
+    return {"success": True}
+
+
+@app.get("/api/chat/{context}")
+async def api_chat_load(context: str):
+    """按上下文加载聊天记录"""
+    if context not in ("home", "study", "tutor"):
+        return {"success": False, "error": "无效的 context"}
+    messages = await database.load_chat_messages(USER_ID, context)
+    return {"success": True, "messages": messages}
+
+
 @app.get("/health")
 async def health():
     """健康检查"""
@@ -3265,23 +3384,32 @@ async def health():
         "status": "ok",
         "video_exists": VIDEO_FILE.exists(),
         "html_exists": HTML_FILE.exists(),
-        "api_configured": bool(DASHSCOPE_API_KEY)
+        "api_configured": bool(DASHSCOPE_API_KEY),
+        "db_configured": bool(database.MYSQL_PASSWORD),
     }
 
 
 # ============ 启动 ============
 if __name__ == "__main__":
+    import asyncio
+
+    async def startup():
+        await database.init_db()
+        print("✅ MySQL 数据库已就绪")
+
+    asyncio.run(startup())
+
     print("""
 ╔══════════════════════════════════════════════════════════════╗
 ║           卷积核微课 - 虚拟实验室 启动中...                     ║
 ╠══════════════════════════════════════════════════════════════╣
-║  访问地址: http://localhost:9000                               ║
+║  访问地址: http://localhost:8000                               ║
 ║                                                               ║
 ║  功能页面:                                                    ║
-║    📺 微课观影: http://localhost:9000/                        ║
-║    📚 课后学习: http://localhost:9000/study                    ║
-║    🤖 AI助教:   http://localhost:9000/ai-tutor                ║
+║    📺 微课观影: http://localhost:8000/                        ║
+║    📚 课后学习: http://localhost:8000/study                    ║
+║    🤖 AI助教:   http://localhost:8000/ai-tutor                ║
 ╚══════════════════════════════════════════════════════════════╝
     """)
 
-    uvicorn.run(app, host="0.0.0.0", port=9000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

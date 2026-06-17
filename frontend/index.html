@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>卷积核微课 - 虚拟实验室</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@400;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <!-- CDN 库：anime.js, fabric.js, ECharts, Three.js, html2pdf, FileSaver -->
+  <script>
+    (function loadECharts() {
+      var cdns = [
+        'https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js',
+        'https://cdn.bootcdn.net/ajax/libs/echarts/5.5.0/echarts.min.js',
+        'https://unpkg.com/echarts@5.5.0/dist/echarts.min.js'
+      ];
+      var i = 0;
+      function tryNext() {
+        if (i >= cdns.length) return;
+        var s = document.createElement('script');
+        s.src = cdns[i++];
+        s.onerror = tryNext;
+        document.head.appendChild(s);
+      }
+      tryNext();
+    })();
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
