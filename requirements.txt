@@ -2,7 +2,3 @@ fastapi
 uvicorn
 requests
 python-dotenv
-streamlit
-python-docx
-reportlab
-Pillow

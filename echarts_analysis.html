@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>卷积核微课 - 我的学习进度</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/extension/dataTool.min.js"></script>
+    <script src="https://unpkg.com/echarts-gl@2.0.9/dist/echarts-gl.min.js"></script>
+    <style>
+        :root {
+            --color-bg: #FFF4E6;
+            --color-surface: #FFFBF5;
+            --color-card: #FFFFFF;
+            --color-text-main: #1F2937;
+            --color-text-muted: #6B7280;
+            --color-accent: #B45309;
+            --color-accent-light: #D97706;
+            --color-kernel: #F59E0B;
+            --color-conv: #DC2626;
+            --color-pool: #2563EB;
+            --color-fc: #7C3AED;
+            --color-activation: #059669;
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --radius-xl: 16px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'PingFang SC', -apple-system, sans-serif;
+            background: var(--color-bg);
+            min-height: 100vh;
+            color: var(--color-text-main);
+            line-height: 1.6;
+        }
+
+        .header {
+            padding: 2rem 1rem;
+            text-align: center;
+            background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-bg) 100%);
+            border-bottom: 1px solid rgba(31,41,55,0.14);
+        }
+
+        .header h1 {
+            color: var(--color-accent);
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            color: var(--color-text-muted);
+            font-size: 1rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+        }
+
+        .section-title {
+            color: var(--color-accent);
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            padding-left: 1rem;
+            border-left: 4px solid var(--color-accent);
+        }
+
+        .section-desc {
+            color: var(--color-text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 1.5rem;
+            margin-left: 1rem;
+        }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-card {
+            background: var(--color-card);
+            border-radius: var(--radius-xl);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .chart-card h3 {
+            color: var(--color-text-main);
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .chart-container {
+            width: 100%;
+            height: 350px;
+        }
+
+        .chart-container-large {
+            width: 100%;
+            height: 500px;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .data-insight {
+            background: var(--color-surface);
+            border-radius: var(--radius-xl);
+            padding: 1.5rem;
+            margin-top: 1rem;
+            border-left: 4px solid var(--color-accent-light);
+        }
+
+        .data-insight h4 {
+            color: var(--color-accent);
+            margin-bottom: 0.75rem;
+            font-size: 1rem;
+        }
+
+        .data-insight ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .data-insight li {
+            padding: 0.5rem 0;
+            color: var(--color-text-muted);
+            font-size: 0.9rem;
+            border-bottom: 1px dashed rgba(31,41,55,0.1);
+        }
+
+        .data-insight li:last-child {
+            border-bottom: none;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background: var(--color-accent);
+            color: white;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            margin-right: 0.5rem;
+        }
+
+        .badge-simple {
+            background: #10B981;
+        }
+
+        .badge-complex {
+            background: #6366F1;
+        }
+
+        .progress-summary {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .progress-item {
+            text-align: center;
+            padding: 1rem 1.5rem;
+            background: var(--color-surface);
+            border-radius: var(--radius-xl);
+            min-width: 120px;
+        }
+
+        .progress-item .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--color-accent);
+        }
+
+        .progress-item .label {
+            font-size: 0.875rem;
+            color: var(--color-text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .learning-path {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: var(--color-surface);
+            border-radius: var(--radius-xl);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .path-stage {
+            text-align: center;
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .path-stage .icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 0.5rem;
+            font-size: 1.5rem;
+        }
+
+        .path-stage .name {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--color-text-main);
+        }
+
+        .path-stage .progress {
+            font-size: 0.75rem;
+            color: var(--color-text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .path-stage.completed .icon {
+            background: linear-gradient(135deg, #10B981, #059669);
+            color: white;
+        }
+
+        .path-stage.in-progress .icon {
+            background: linear-gradient(135deg, var(--color-accent), var(--color-accent-light));
+            color: white;
+        }
+
+        .path-stage.pending .icon {
+            background: rgba(180,83,9,0.2);
+            color: var(--color-accent);
+        }
+
+        @media (max-width: 768px) {
+            .chart-grid {
+                grid-template-columns: 1fr;
+            }
+            .chart-container, .chart-container-large {
+                height: 300px;
+            }
+            .progress-summary {
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><i class="fas fa-route"></i> 我的学习进度</h1>
+        <p>卷积核微课 · 计算机视觉学习路径</p>
+
+        <div class="progress-summary">
+            <div class="progress-item">
+                <div class="value">68%</div>
+                <div class="label">总体进度</div>
+            </div>
+            <div class="progress-item">
+                <div class="value">12</div>
+                <div class="label">已完成知识点</div>
+            </div>
+            <div class="progress-item">
+                <div class="value">8h</div>
+                <div class="label">累计学习时长</div>
+            </div>
+            <div class="progress-item">
+                <div class="value">85</div>
+                <div class="label">练习正确率</div>
+            </div>
+        </div>
+
+        <div class="learning-path">
+            <div class="path-stage completed">
+                <div class="icon"><i class="fas fa-play"></i></div>
+                <div class="name">入门</div>
+                <div class="progress">100%</div>
+            </div>
+            <div class="path-stage completed">
+                <div class="icon"><i class="fas fa-layer-group"></i></div>
+                <div class="name">基础概念</div>
+                <div class="progress">100%</div>
+            </div>
+            <div class="path-stage in-progress">
+                <div class="icon"><i class="fas fa-cogs"></i></div>
+                <div class="name">核心机制</div>
+                <div class="progress">75%</div>
+            </div>
+            <div class="path-stage pending">
+                <div class="icon"><i class="fas fa-chart-line"></i></div>
+                <div class="name">进阶应用</div>
+                <div class="progress">0%</div>
+            </div>
+            <div class="path-stage pending">
+                <div class="icon"><i class="fas fa-brain"></i></div>
+                <div class="name">项目实战</div>
+                <div class="progress">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div style="margin-bottom: 2rem;">
+            <h2 class="section-title">学习进度数据分析</h2>
+            <p class="section-desc">以下图表展示你在卷积神经网络各核心知识模块的学习进度和掌握情况。</p>
+        </div>
+
+        <div class="chart-grid">
+            <div class="chart-card">
+                <h3><i class="fas fa-tasks"></i> 各阶段学习进度（条形图）</h3>
+                <div id="barChart" class="chart-container"></div>
+                <div class="data-insight">
+                    <h4>数据分析：</h4>
+                    <ul>
+                        <li>• 入门阶段已完成（100%），你已掌握CNN基础概念和术语</li>
+                        <li>• 基础概念阶段已完成（100%），卷积层、池化层原理已理解</li>
+                        <li>• 核心机制阶段进行中（75%），激活函数和特征图正在学习中</li>
+                        <li>• 建议：优先完成"核心机制"阶段，再进入进阶应用</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <h3><i class="fas fa-chart-pie"></i> 知识点完成度分布（饼图）</h3>
+                <div id="pieChart" class="chart-container"></div>
+                <div class="data-insight">
+                    <h4>数据分析：</h4>
+                    <ul>
+                        <li>• 已掌握知识点占42%，表明你已经完成了近一半的核心内容</li>
+                        <li>• 正在学习占25%，这部分内容需要加强练习和巩固</li>
+                        <li>• 未开始占33%，主要是进阶和实战内容，建议按顺序学习</li>
+                        <li>• 图表类型选择：饼图适合展示整体进度的构成比例</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-grid">
+            <div class="chart-card">
+                <h3><i class="fas fa-chart-polar"></i> 多维能力雷达图（雷达图）</h3>
+                <div id="radarChart" class="chart-container"></div>
+                <div class="data-insight">
+                    <h4>数据分析：</h4>
+                    <ul>
+                        <li>• 理论基础得分最高（82分），概念理解较为扎实</li>
+                        <li>• 编程实践得分（75分），需要更多动手编码练习</li>
+                        <li>• 参数调优得分（60分），建议学习超参数优化策略</li>
+                        <li>• 模型设计得分（55分），这是进阶阶段的核心能力</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-bottom: 2rem; margin-top: 3rem;">
+            <h2 class="section-title">学习路径深度分析</h2>
+            <p class="section-desc">以下图表从更深层次展示学习数据，包括学习路径的可视化和知识点关联分析。</p>
+        </div>
+
+        <div class="chart-grid">
+            <div class="chart-card full-width">
+                <h3><i class="fas fa-project-diagram"></i> 知识点依赖关系图（力导向图）</h3>
+                <div id="graphChart" class="chart-container-large"></div>
+                <div class="data-insight">
+                    <h4>图表说明与应用场景：</h4>
+                    <ul>
+                        <li>• 力导向图用于展示知识点之间的依赖关系和关联强度</li>
+                        <li>• 节点大小表示该知识点的重要程度，连线粗细表示依赖关系强弱</li>
+                        <li>• 从图中可见，"卷积操作"是整个学习路径的核心枢纽</li>
+                        <li>• "特征图"和"池化层"都与卷积操作有强依赖，是CNN的核心组件</li>
+                        <li>• 学习建议：先掌握核心节点（卷积操作），再辐射学习关联知识点</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-grid">
+            <div class="chart-card full-width">
+                <h3><i class="fas fa-cube"></i> 3D学习路径探索（3D散点图）</h3>
+                <div id="scatter3DChart" class="chart-container-large"></div>
+                <div class="data-insight">
+                    <h4>图表说明与应用场景：</h4>
+                    <ul>
+                        <li>• 3D散点图用于展示三维空间中的知识点分布</li>
+                        <li>• X轴表示知识点难度等级（1-入门、2-基础、3-进阶、4-高级）</li>
+                        <li>• Y轴表示学习优先级（数值越大越重要）</li>
+                        <li>• Z轴表示预估学习时长（小时）</li>
+                        <li>• 颜色区分不同知识类别：红色-卷积类、绿色-池化类、蓝色-全连接类、紫色-激活类</li>
+                        <li>• 应用价值：帮助学习者理解知识点的层次结构和学习顺序</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // ECharts 学习进度可视化系统
+        // 功能：展示卷积神经网络学习进度、知识分布和能力分析
+        // 包含图表：条形图、饼图、雷达图、力导向图、3D散点图
+        // ============================================
+
+        // 主题配色方案 - 与微课项目风格统一
+        const colors = {
+            primary: '#B45309',
+            secondary: '#D97706',
+            accent: '#F59E0B',
+            green: '#10B981',
+            blue: '#3B82F6',
+            purple: '#8B5CF6',
+            red: '#EF4444',
+            gray: '#6B7280',
+            kernel: '#F59E0B',
+            conv: '#DC2626',      // 卷积层颜色
+            pool: '#2563EB',      // 池化层颜色
+            fc: '#7C3AED',        // 全连接层颜色
+            activation: '#059669'  // 激活函数颜色
+        };
+
+        // 注册自定义主题 'cnn'，统一图表配色
+        echarts.registerTheme('cnn', {
+            color: [colors.conv, colors.pool, colors.activation, colors.fc, colors.kernel, colors.blue, colors.purple, colors.red],
+            backgroundColor: 'transparent'
+        });
+
+        // ============================================
+        // 图表1：条形图 - 各阶段学习进度
+        // 用途：展示10个核心知识点的完成度对比
+        // ============================================
+        function initBarChart() {
+            const chart = echarts.init(document.getElementById('barChart'), 'cnn');
+
+            const option = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' },
+                    formatter: '{b}: {c}%'
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    top: '10%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: ['入门\n基础', '卷积层\n原理', '池化层\n原理', '激活\n函数', '特征图\n分析', '全连接\n层', '批归一化\n与Dropout', '注意力\n机制', '3D卷积\n核', '项目\n实战'],
+                    axisLabel: {
+                        color: colors.gray,
+                        fontSize: 10,
+                        interval: 0
+                    },
+                    axisLine: { lineStyle: { color: 'rgba(0,0,0,0.1)' } }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '完成度 (%)',
+                    max: 100,
+                    axisLabel: { color: colors.gray, formatter: '{value}%' },
+                    axisLine: { lineStyle: { color: 'rgba(0,0,0,0.1)' } },
+                    splitLine: { lineStyle: { color: 'rgba(0,0,0,0.05)' } }
+                },
+                series: [{
+                    name: '完成度',
+                    type: 'bar',
+                    data: [
+                        { value: 100, itemStyle: { color: colors.green } },
+                        { value: 100, itemStyle: { color: colors.green } },
+                        { value: 95, itemStyle: { color: colors.green } },
+                        { value: 80, itemStyle: { color: colors.blue } },
+                        { value: 65, itemStyle: { color: colors.blue } },
+                        { value: 45, itemStyle: { color: colors.kernel } },
+                        { value: 30, itemStyle: { color: colors.kernel } },
+                        { value: 0, itemStyle: { color: colors.gray } },
+                        { value: 0, itemStyle: { color: colors.gray } },
+                        { value: 0, itemStyle: { color: colors.gray } }
+                    ],
+                    barWidth: '60%',
+                    itemStyle: {
+                        borderRadius: [4, 4, 0, 0]
+                    },
+                    emphasis: {
+                        itemStyle: {
+                            shadowBlur: 10,
+                            shadowColor: 'rgba(0,0,0,0.3)'
+                        }
+                    },
+                    label: {
+                        show: true,
+                        position: 'top',
+                        formatter: '{c}%',
+                        color: colors.textMain,
+                        fontSize: 10
+                    }
+                }],
+                animationDuration: 1500,
+                animationEasing: 'cubicOut'
+            };
+
+            chart.setOption(option);
+            window.addEventListener('resize', () => chart.resize());
+        }
+
+        // ============================================
+        // 图表2：饼图 - 知识点完成度分布
+        // 用途：展示已掌握、正在学、未开始、需复习的比例分布
+        // ============================================
+        function initPieChart() {
+            const chart = echarts.init(document.getElementById('pieChart'), 'cnn');
+
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{b}: {c}% ({d}个知识点)',
+                    backgroundColor: 'rgba(255,255,255,0.95)',
+                    borderColor: 'rgba(0,0,0,0.1)',
+                    textStyle: { color: '#333' }
+                },
+                legend: {
+                    orient: 'vertical',
+                    right: '5%',
+                    top: 'center',
+                    textStyle: { color: colors.gray }
+                },
+                series: [{
+                    name: '完成状态',
+                    type: 'pie',
+                    radius: ['35%', '65%'],
+                    center: ['40%', '50%'],
+                    avoidLabelOverlap: true,
+                    itemStyle: {
+                        borderRadius: 10,
+                        borderColor: '#fff',
+                        borderWidth: 3
+                    },
+                    label: {
+                        show: true,
+                        formatter: '{b}\n{c}%',
+                        color: colors.gray,
+                        fontSize: 11
+                    },
+                    emphasis: {
+                        label: {
+                            show: true,
+                            fontSize: 14,
+                            fontWeight: 'bold'
+                        },
+                        itemStyle: {
+                            shadowBlur: 15,
+                            shadowColor: 'rgba(0,0,0,0.3)'
+                        }
+                    },
+                    data: [
+                        { value: 42, name: '已掌握', itemStyle: { color: colors.green } },
+                        { value: 25, name: '正在学', itemStyle: { color: colors.blue } },
+                        { value: 18, name: '未开始', itemStyle: { color: colors.gray } },
+                        { value: 15, name: '需复习', itemStyle: { color: colors.kernel } }
+                    ]
+                }],
+                animationType: 'scale',
+                animationDuration: 1500,
+                animationEasing: 'elasticOut'
+            };
+
+            chart.setOption(option);
+            window.addEventListener('resize', () => chart.resize());
+        }
+
+        function initRadarChart() {
+            const chart = echarts.init(document.getElementById('radarChart'), 'cnn');
+
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    backgroundColor: 'rgba(255,255,255,0.95)',
+                    borderColor: '#ccc',
+                    textStyle: { color: '#333' }
+                },
+                legend: {
+                    data: ['我的能力', '平均水平'],
+                    bottom: 0,
+                    textStyle: { color: colors.gray }
+                },
+                radar: {
+                    indicator: [
+                        { name: '理论基础', max: 100 },
+                        { name: '编程实践', max: 100 },
+                        { name: '参数理解', max: 100 },
+                        { name: '模型设计', max: 100 },
+                        { name: '问题诊断', max: 100 }
+                    ],
+                    shape: 'polygon',
+                    splitNumber: 4,
+                    axisName: {
+                        color: colors.gray,
+                        fontSize: 11
+                    },
+                    splitLine: {
+                        lineStyle: { color: 'rgba(0,0,0,0.1)' }
+                    },
+                    splitArea: {
+                        show: true,
+                        areaStyle: {
+                            color: ['rgba(255,244,230,0.3)', 'rgba(255,244,230,0.1)', 'rgba(255,244,230,0.05)', 'rgba(255,244,230,0.02)']
+                        }
+                    },
+                    axisLine: {
+                        lineStyle: { color: 'rgba(0,0,0,0.1)' }
+                    }
+                },
+                series: [{
+                    type: 'radar',
+                    data: [
+                        {
+                            value: [82, 75, 60, 55, 68],
+                            name: '我的能力',
+                            symbol: 'circle',
+                            symbolSize: 8,
+                            lineStyle: {
+                                width: 3,
+                                color: colors.conv
+                            },
+                            areaStyle: {
+                                color: new echarts.graphic.RadialGradient(0.5, 0.5, 1, [
+                                    { offset: 0, color: 'rgba(220,38,38,0.4)' },
+                                    { offset: 1, color: 'rgba(220,38,38,0.1)' }
+                                ])
+                            },
+                            itemStyle: {
+                                color: colors.conv
+                            }
+                        },
+                        {
+                            value: [65, 70, 55, 50, 60],
+                            name: '平均水平',
+                            symbol: 'circle',
+                            symbolSize: 6,
+                            lineStyle: {
+                                width: 2,
+                                color: colors.gray,
+                                type: 'dashed'
+                            },
+                            areaStyle: {
+                                color: new echarts.graphic.RadialGradient(0.5, 0.5, 1, [
+                                    { offset: 0, color: 'rgba(107,114,128,0.2)' },
+                                    { offset: 1, color: 'rgba(107,114,128,0.05)' }
+                                ])
+                            },
+                            itemStyle: {
+                                color: colors.gray
+                            }
+                        }
+                    ]
+                }],
+                animationDuration: 1500,
+                animationEasing: 'cubicOut'
+            };
+
+            chart.setOption(option);
+            window.addEventListener('resize', () => chart.resize());
+        }
+
+        // ============================================
+        // 图表4：力导向图 - 知识点依赖关系
+        // 用途：展示知识点之间的关联和依赖强度，节点大小表示重要程度
+        // ============================================
+        function initGraphChart() {
+            const container = document.getElementById('graphChart');
+            
+            try {
+                const chart = echarts.init(container);
+
+                const categories = [
+                    { name: '核心', itemStyle: { color: colors.conv } },
+                    { name: '基础', itemStyle: { color: colors.pool } },
+                    { name: '激活', itemStyle: { color: colors.activation } },
+                    { name: '进阶', itemStyle: { color: colors.fc } }
+                ];
+
+                const data = [
+                    { name: '卷积操作', category: 0, value: 100, itemStyle: { color: colors.conv } },
+                    { name: '特征图', category: 0, value: 90, itemStyle: { color: colors.conv } },
+                    { name: '池化层', category: 1, value: 85, itemStyle: { color: colors.pool } },
+                    { name: '步长与填充', category: 1, value: 80, itemStyle: { color: colors.pool } },
+                    { name: '激活函数', category: 2, value: 75, itemStyle: { color: colors.activation } },
+                    { name: 'ReLU', category: 2, value: 70, itemStyle: { color: colors.activation } },
+                    { name: 'Sigmoid', category: 2, value: 65, itemStyle: { color: colors.activation } },
+                    { name: '全连接层', category: 3, value: 60, itemStyle: { color: colors.fc } },
+                    { name: 'Softmax', category: 3, value: 55, itemStyle: { color: colors.fc } },
+                    { name: 'Dropout', category: 3, value: 50, itemStyle: { color: colors.fc } },
+                    { name: '批归一化', category: 3, value: 45, itemStyle: { color: colors.fc } },
+                    { name: '注意力机制', category: 3, value: 40, itemStyle: { color: colors.kernel } }
+                ];
+
+                const links = [
+                    { source: '卷积操作', target: '特征图', lineStyle: { width: 6, color: colors.conv } },
+                    { source: '卷积操作', target: '池化层', lineStyle: { width: 5, color: colors.pool } },
+                    { source: '卷积操作', target: '步长与填充', lineStyle: { width: 4, color: colors.pool } },
+                    { source: '激活函数', target: 'ReLU', lineStyle: { width: 4, color: colors.activation } },
+                    { source: '激活函数', target: 'Sigmoid', lineStyle: { width: 3, color: colors.activation } },
+                    { source: '池化层', target: '全连接层', lineStyle: { width: 4, color: colors.fc } },
+                    { source: '特征图', target: '全连接层', lineStyle: { width: 5, color: colors.fc } },
+                    { source: '全连接层', target: 'Softmax', lineStyle: { width: 4, color: colors.fc } },
+                    { source: '全连接层', target: 'Dropout', lineStyle: { width: 3, color: colors.fc } },
+                    { source: 'Dropout', target: '批归一化', lineStyle: { width: 3, color: colors.fc } },
+                    { source: '特征图', target: '注意力机制', lineStyle: { width: 3, color: colors.kernel } }
+                ];
+
+                const option = {
+                    title: {
+                        text: '卷积神经网络知识点依赖关系',
+                        left: 'center',
+                        top: 10,
+                        textStyle: { color: colors.primary, fontSize: 16 }
+                    },
+                    tooltip: {
+                        trigger: 'item',
+                        formatter: function(params) {
+                            if (params.dataType === 'node') {
+                                return params.name + '<br/>重要程度: ' + params.data.value + '%';
+                            }
+                            return params.data.source + ' → ' + params.data.target;
+                        },
+                        backgroundColor: 'rgba(255,255,255,0.95)',
+                        borderColor: '#ccc',
+                        textStyle: { color: '#333' }
+                    },
+                    legend: [{
+                        data: categories.map(item => item.name),
+                        bottom: 10,
+                        textStyle: { color: colors.gray }
+                    }],
+                    series: [{
+                        type: 'graph',
+                        layout: 'force',
+                        symbolSize: function(val, params) {
+                            return Math.sqrt(params.data.value) * 1.5;
+                        },
+                        roam: true,
+                        draggable: true,
+                        label: {
+                            show: true,
+                            position: 'right',
+                            formatter: '{b}',
+                            fontSize: 10,
+                            color: '#333'
+                        },
+                        lineStyle: {
+                            curveness: 0.3
+                        },
+                        emphasis: {
+                            focus: 'adjacency',
+                            lineStyle: {
+                                width: 6
+                            }
+                        },
+                        categories: categories,
+                        data: data,
+                        links: links,
+                        force: {
+                            repulsion: 200,
+                            edgeLength: [50, 150],
+                            layoutAnimation: true
+                        }
+                    }],
+                    animationDuration: 2000,
+                    animationEasing: 'cubicOut'
+                };
+
+                chart.setOption(option);
+                window.addEventListener('resize', () => chart.resize());
+            } catch (error) {
+                console.error('力导向图初始化失败:', error);
+                container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#666;font-size:14px;">图表加载失败，请刷新页面重试</div>';
+            }
+        }
+
+        function initScatter3DChart() {
+            const container = document.getElementById('scatter3DChart');
+            
+            if (typeof echarts === 'undefined') {
+                container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#666;font-size:14px;">ECharts库加载失败，请刷新页面重试</div>';
+                return;
+            }
+
+            try {
+                const chart = echarts.init(container);
+
+                const knowledgePoints = [
+                    { name: 'CNN基础', difficulty: 0, priority: 95, duration: 1.5, type: 0 },
+                    { name: '卷积原理', difficulty: 1, priority: 90, duration: 2.0, type: 0 },
+                    { name: '卷积操作', difficulty: 1, priority: 88, duration: 2.5, type: 0 },
+                    { name: '特征图', difficulty: 1, priority: 85, duration: 2.0, type: 0 },
+                    { name: '池化层', difficulty: 1, priority: 82, duration: 1.8, type: 1 },
+                    { name: '步长填充', difficulty: 1, priority: 80, duration: 1.5, type: 0 },
+                    { name: '激活函数', difficulty: 2, priority: 78, duration: 2.0, type: 2 },
+                    { name: 'ReLU变体', difficulty: 2, priority: 75, duration: 2.2, type: 2 },
+                    { name: '全连接层', difficulty: 2, priority: 72, duration: 2.5, type: 3 },
+                    { name: 'Softmax', difficulty: 2, priority: 70, duration: 1.5, type: 3 },
+                    { name: 'Dropout', difficulty: 2, priority: 68, duration: 1.8, type: 3 },
+                    { name: '批归一化', difficulty: 3, priority: 65, duration: 2.5, type: 3 },
+                    { name: '残差网络', difficulty: 3, priority: 60, duration: 3.0, type: 3 },
+                    { name: '注意力机制', difficulty: 3, priority: 55, duration: 3.5, type: 3 }
+                ];
+
+                const typeColors = [colors.conv, colors.pool, colors.activation, colors.fc];
+
+                const option = {
+                    title: {
+                        text: '知识点三维分布（可拖拽旋转）',
+                        left: 'center',
+                        top: 10,
+                        textStyle: { color: colors.primary, fontSize: 16 }
+                    },
+                    tooltip: {
+                        trigger: 'item',
+                        formatter: function(params) {
+                            if (params.value) {
+                                const difficultyNames = ['入门', '基础', '进阶', '高级'];
+                                const typeNames = ['卷积类', '池化类', '激活类', '全连接类'];
+                                return params.name + '<br/>' +
+                                       '难度: ' + difficultyNames[params.value[0]] + '<br/>' +
+                                       '优先级: ' + params.value[1] + '<br/>' +
+                                       '时长: ' + params.value[2] + 'h';
+                            }
+                            return '';
+                        },
+                        backgroundColor: 'rgba(255,255,255,0.95)',
+                        borderColor: '#ccc',
+                        textStyle: { color: '#333' }
+                    },
+                    legend: {
+                        data: ['卷积类', '池化类', '激活类', '全连接类'],
+                        bottom: 10,
+                        textStyle: { color: '#666' }
+                    },
+                    xAxis3D: {
+                        type: 'category',
+                        data: ['入门', '基础', '进阶', '高级'],
+                        name: '难度等级',
+                        nameLocation: 'middle',
+                        nameGap: 25,
+                        axisLabel: { color: '#666', fontSize: 11 },
+                        nameTextStyle: { color: '#333', fontSize: 12 }
+                    },
+                    yAxis3D: {
+                        type: 'value',
+                        name: '学习优先级',
+                        nameLocation: 'middle',
+                        nameGap: 30,
+                        axisLabel: { color: '#666', fontSize: 11 },
+                        nameTextStyle: { color: '#333', fontSize: 12 },
+                        min: 50,
+                        max: 100
+                    },
+                    zAxis3D: {
+                        type: 'value',
+                        name: '学习时长(h)',
+                        nameLocation: 'middle',
+                        nameGap: 35,
+                        axisLabel: { color: '#666', fontSize: 11 },
+                        nameTextStyle: { color: '#333', fontSize: 12 },
+                        min: 1,
+                        max: 4
+                    },
+                    grid3D: {
+                        boxWidth: 100,
+                        boxHeight: 80,
+                        boxDepth: 60,
+                        viewControl: {
+                            projection: 'perspective',
+                            autoRotate: false,
+                            rotateSensitivity: 1,
+                            zoomSensitivity: 1,
+                            distance: 200
+                        },
+                        light: {
+                            main: {
+                                intensity: 1.5,
+                                shadow: true
+                            },
+                            ambient: {
+                                intensity: 0.3
+                            }
+                        },
+                        environment: 'auto'
+                    },
+                    series: [{
+                        type: 'scatter3D',
+                        name: '知识点',
+                        data: knowledgePoints.map(item => ({
+                            value: [item.difficulty, item.priority, item.duration],
+                            name: item.name,
+                            itemStyle: {
+                                color: typeColors[item.type]
+                            }
+                        })),
+                        symbol: 'circle',
+                        symbolSize: 14,
+                        emphasis: {
+                            itemStyle: {
+                                shadowBlur: 20,
+                                shadowColor: 'rgba(0,0,0,0.5)'
+                            }
+                        },
+                        label: {
+                            show: true,
+                            formatter: function(params) {
+                                return params.name;
+                            },
+                            position: 'top',
+                            fontSize: 9,
+                            color: '#333',
+                            distance: 5
+                        }
+                    }],
+                    animationDuration: 2000,
+                    animationEasing: 'cubicOut'
+                };
+
+                chart.setOption(option);
+                window.addEventListener('resize', () => chart.resize());
+            } catch (error) {
+                console.error('3D图表初始化失败:', error);
+                container.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#666;font-size:14px;"><p style="margin-bottom:10px;">⚠️ 3D图表加载失败</p><p style="font-size:12px;">可能原因：浏览器不支持WebGL或网络问题</p><p style="font-size:12px;margin-top:5px;">建议：使用Chrome/Firefox/Edge浏览器</p></div>';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            initBarChart();
+            initPieChart();
+            initRadarChart();
+            setTimeout(initGraphChart, 500);
+            setTimeout(initScatter3DChart, 800);
+        });
+    </script>
+</body>
+</html>

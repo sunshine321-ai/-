@@ -30,7 +30,6 @@ HTML_FILE = BASE_DIR / "课后学习资料_优化版.html"
 DASHSCOPE_API_KEY = os.getenv("DASHSCOPE_API_KEY", "")
 DASHSCOPE_BASE_URL = os.getenv("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/api/v1")
 QWEN_MODEL = os.getenv("QWEN_MODEL", "qwen-plus")
-
 # ============ 跨页面统一导出弹窗（共享HTML+JS）============
 def get_shared_export_modal() -> str:
     """
@@ -324,10 +323,16 @@ async def index():
                 font-size: 1.1rem;
             }}
             .nav-cards {{
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
                 gap: 24px;
                 margin-top: 40px;
+            }}
+            .nav-card-wrapper {{
+                flex: 1 1 calc(33.333% - 24px);
+                max-width: 380px;
+                min-width: 280px;
             }}
             .nav-card {{
                 background: var(--surface);
@@ -337,6 +342,11 @@ async def index():
                 text-decoration: none;
                 color: var(--text-main);
                 transition: all 0.3s ease;
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
             }}
             .nav-card:hover {{
                 transform: translateY(-5px);
@@ -345,21 +355,42 @@ async def index():
                 box-shadow: var(--shadow);
             }}
             .nav-card i {{
-                font-size: 2.5rem;
+                font-size: 3rem;
                 margin-bottom: 20px;
+                transition: transform 0.3s ease;
+            }}
+            .nav-card:hover i {{
+                transform: scale(1.1);
             }}
             .nav-card h2 {{
                 font-family: 'Fredoka', 'PingFang SC', sans-serif;
-                font-size: 1.5rem;
+                font-size: 1.4rem;
                 margin-bottom: 10px;
             }}
             .nav-card p {{
                 color: var(--text-muted);
                 line-height: 1.6;
+                font-size: 0.95rem;
             }}
             .card-video i {{ color: var(--c-yellow); }}
             .card-study i {{ color: var(--c-coral); }}
             .card-ai i {{ color: var(--c-mint); }}
+            .card-3d i {{ color: #8b5cf6; }}
+            .card-data i {{ color: #10b981; }}
+
+            @media (max-width: 1024px) {{
+                .nav-card-wrapper {{
+                    flex: 1 1 calc(50% - 24px);
+                    max-width: 400px;
+                }}
+            }}
+            @media (max-width: 640px) {{
+                .nav-card-wrapper {{
+                    flex: 1 1 100%;
+                    max-width: 100%;
+                }}
+                .header h1 {{ font-size: 1.8rem; }}
+            }}
             .video-player {{
                 margin-top: 40px;
                 background: var(--surface);
@@ -404,21 +435,41 @@ async def index():
             </div>
 
             <div class="nav-cards">
-                <a href="/" class="nav-card card-video">
-                    <i class="fas fa-play-circle"></i>
-                    <h2>📺 微课观影</h2>
-                    <p>观看卷积核核心知识的教学视频</p>
-                </a>
-                <a href="/study" class="nav-card card-study">
-                    <i class="fas fa-book-open"></i>
-                    <h2>📚 课后学习</h2>
-                    <p>交互式HTML学习资料与练习</p>
-                </a>
-                <a href="/ai-tutor" class="nav-card card-ai">
-                    <i class="fas fa-robot"></i>
-                    <h2>🤖 AI助教</h2>
-                    <p>基于千问大模型的智能问答助手</p>
-                </a>
+                <div class="nav-card-wrapper">
+                    <a href="/" class="nav-card card-video">
+                        <i class="fas fa-play-circle"></i>
+                        <h2>📺 微课观影</h2>
+                        <p>观看卷积核核心知识的教学视频</p>
+                    </a>
+                </div>
+                <div class="nav-card-wrapper">
+                    <a href="/study" class="nav-card card-study">
+                        <i class="fas fa-book-open"></i>
+                        <h2>📚 课后学习</h2>
+                        <p>交互式HTML学习资料与练习</p>
+                    </a>
+                </div>
+                <div class="nav-card-wrapper">
+                    <a href="/ai-tutor" class="nav-card card-ai">
+                        <i class="fas fa-robot"></i>
+                        <h2>🤖 AI助教</h2>
+                        <p>基于千问大模型的智能问答助手</p>
+                    </a>
+                </div>
+                <div class="nav-card-wrapper">
+                    <a href="/3d-space" class="nav-card card-3d">
+                        <i class="fas fa-cube"></i>
+                        <h2>🎮 3D展示</h2>
+                        <p>Three.js卷积核可视化展示</p>
+                    </a>
+                </div>
+                <div class="nav-card-wrapper">
+                    <a href="/data-board" class="nav-card card-data">
+                        <i class="fas fa-chart-line"></i>
+                        <h2>📊 数据看板</h2>
+                        <p>Echarts学习数据可视化</p>
+                    </a>
+                </div>
             </div>
 
             <div class="video-player">
@@ -1330,40 +1381,40 @@ async def index():
         </script>
         
         <!-- 截图编辑弹窗 -->
-        <div id="screenshotEditorModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:10000;">
-            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1a2e;border-radius:12px;width:90vw;height:90vh;max-width:1400px;max-height:900px;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+        <div id="screenshotEditorModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,244,230,0.95);z-index:10000;">
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:white;border-radius:16px;width:90vw;height:90vh;max-width:1400px;max-height:900px;display:flex;flex-direction:column;box-shadow:0 25px 80px rgba(194,65,12,0.25);border:1px solid rgba(194,65,12,0.15);">
                 <!-- 头部工具栏 -->
-                <div style="padding:15px 20px;background:#16213e;border-radius:12px 12px 0 0;display:flex;align-items:center;flex-wrap:wrap;gap:10px;border-bottom:1px solid #0f3460;">
-                    <h3 style="color:#e94560;margin:0;font-size:1.2rem;"><i class="fas fa-edit"></i> 截图编辑器</h3>
+                <div style="padding:15px 20px;background:#FFF4E6;border-radius:16px 16px 0 0;display:flex;align-items:center;flex-wrap:wrap;gap:10px;border-bottom:1px solid rgba(194,65,12,0.15);">
+                    <h3 style="color:#C2410C;margin:0;font-size:1.2rem;"><i class="fas fa-edit"></i> 截图编辑器</h3>
                     <div style="display:flex;gap:10px;flex-wrap:wrap;flex:1;">
                         <div style="display:flex;align-items:center;gap:5px;">
-                            <span style="color:#fff;font-size:0.9rem;">颜色:</span>
-                            <input type="color" id="colorPicker" value="#ffffff" style="width:50px;height:34px;border:none;border-radius:6px;cursor:pointer;">
+                            <span style="color:#1F2937;font-size:0.9rem;">颜色:</span>
+                            <input type="color" id="colorPicker" value="#C2410C" style="width:50px;height:34px;border:1px solid rgba(194,65,12,0.2);border-radius:8px;cursor:pointer;">
                         </div>
-                        <button onclick="addText()" style="background:#0f3460;color:#fff;border:none;padding:8px 15px;border-radius:6px;cursor:pointer;font-size:0.9rem;"><i class="fas fa-font"></i> 文字</button>
-                        <button onclick="addRect()" style="background:#0f3460;color:#fff;border:none;padding:8px 15px;border-radius:6px;cursor:pointer;font-size:0.9rem;"><i class="fas fa-square"></i> 矩形</button>
-                        <button onclick="addCircle()" style="background:#0f3460;color:#fff;border:none;padding:8px 15px;border-radius:6px;cursor:pointer;font-size:0.9rem;"><i class="fas fa-circle"></i> 圆形</button>
-                        <button onclick="addArrow()" style="background:#0f3460;color:#fff;border:none;padding:8px 15px;border-radius:6px;cursor:pointer;font-size:0.9rem;"><i class="fas fa-arrow-right"></i> 箭头</button>
-                        <button onclick="addUnderline()" style="background:#0f3460;color:#fff;border:none;padding:8px 15px;border-radius:6px;cursor:pointer;font-size:0.9rem;"><i class="fas fa-minus"></i> 下划线</button>
-                        <button onclick="toggleDrawingMode()" id="drawingModeBtn" style="background:#0f3460;color:#fff;border:none;padding:8px 15px;border-radius:6px;cursor:pointer;font-size:0.9rem;"><i class="fas fa-pencil-alt"></i> 画笔</button>
-                        <button onclick="deleteSelected()" style="background:#e94560;color:#fff;border:none;padding:8px 15px;border-radius:6px;cursor:pointer;font-size:0.9rem;"><i class="fas fa-trash"></i> 删除</button>
-                        <button onclick="clearCanvas()" style="background:#e94560;color:#fff;border:none;padding:8px 15px;border-radius:6px;cursor:pointer;font-size:0.9rem;"><i class="fas fa-eraser"></i> 清空</button>
+                        <button onclick="addText()" style="background:rgba(194,65,12,0.08);color:#C2410C;border:1px solid rgba(194,65,12,0.2);padding:8px 15px;border-radius:8px;cursor:pointer;font-size:0.9rem;transition:all 0.2s ease;"><i class="fas fa-font"></i> 文字</button>
+                        <button onclick="addRect()" style="background:rgba(194,65,12,0.08);color:#C2410C;border:1px solid rgba(194,65,12,0.2);padding:8px 15px;border-radius:8px;cursor:pointer;font-size:0.9rem;transition:all 0.2s ease;"><i class="fas fa-square"></i> 矩形</button>
+                        <button onclick="addCircle()" style="background:rgba(194,65,12,0.08);color:#C2410C;border:1px solid rgba(194,65,12,0.2);padding:8px 15px;border-radius:8px;cursor:pointer;font-size:0.9rem;transition:all 0.2s ease;"><i class="fas fa-circle"></i> 圆形</button>
+                        <button onclick="addArrow()" style="background:rgba(194,65,12,0.08);color:#C2410C;border:1px solid rgba(194,65,12,0.2);padding:8px 15px;border-radius:8px;cursor:pointer;font-size:0.9rem;transition:all 0.2s ease;"><i class="fas fa-arrow-right"></i> 箭头</button>
+                        <button onclick="addUnderline()" style="background:rgba(194,65,12,0.08);color:#C2410C;border:1px solid rgba(194,65,12,0.2);padding:8px 15px;border-radius:8px;cursor:pointer;font-size:0.9rem;transition:all 0.2s ease;"><i class="fas fa-minus"></i> 下划线</button>
+                        <button onclick="toggleDrawingMode()" id="drawingModeBtn" style="background:rgba(194,65,12,0.08);color:#C2410C;border:1px solid rgba(194,65,12,0.2);padding:8px 15px;border-radius:8px;cursor:pointer;font-size:0.9rem;transition:all 0.2s ease;"><i class="fas fa-pencil-alt"></i> 画笔</button>
+                        <button onclick="deleteSelected()" style="background:rgba(239,68,68,0.1);color:#DC2626;border:1px solid rgba(239,68,68,0.2);padding:8px 15px;border-radius:8px;cursor:pointer;font-size:0.9rem;transition:all 0.2s ease;"><i class="fas fa-trash"></i> 删除</button>
+                        <button onclick="clearCanvas()" style="background:rgba(239,68,68,0.1);color:#DC2626;border:1px solid rgba(239,68,68,0.2);padding:8px 15px;border-radius:8px;cursor:pointer;font-size:0.9rem;transition:all 0.2s ease;"><i class="fas fa-eraser"></i> 清空</button>
                     </div>
                     <div style="display:flex;gap:10px;">
-                        <button onclick="saveEditedScreenshot()" style="background:#00d9ff;color:#1a1a2e;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-weight:bold;font-size:0.9rem;"><i class="fas fa-save"></i> 保存</button>
-                        <button onclick="closeScreenshotEditor()" style="background:#e94560;color:#fff;border:none;padding:8px 20px;border-radius:6px;cursor:pointer;font-weight:bold;font-size:0.9rem;"><i class="fas fa-times"></i> 关闭</button>
+                        <button onclick="saveEditedScreenshot()" style="background:#C2410C;color:white;border:none;padding:8px 20px;border-radius:8px;cursor:pointer;font-weight:bold;font-size:0.9rem;transition:all 0.2s ease;"><i class="fas fa-save"></i> 保存</button>
+                        <button onclick="closeScreenshotEditor()" style="background:rgba(239,68,68,0.1);color:#DC2626;border:1px solid rgba(239,68,68,0.2);padding:8px 20px;border-radius:8px;cursor:pointer;font-weight:bold;font-size:0.9rem;transition:all 0.2s ease;"><i class="fas fa-times"></i> 关闭</button>
                     </div>
                 </div>
                 
                 <!-- 编辑区域 -->
-                <div style="flex:1;padding:20px;background:#1a1a2e;overflow:hidden;display:flex;align-items:center;justify-content:center;">
-                    <div id="canvasContainer" style="box-shadow:0 10px 40px rgba(0,0,0,0.3);border-radius:8px;overflow:hidden;">
+                <div style="flex:1;padding:20px;background:#FFF4E6;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+                    <div id="canvasContainer" style="box-shadow:0 10px 40px rgba(194,65,12,0.15);border-radius:12px;overflow:hidden;border:1px solid rgba(194,65,12,0.1);">
                         <canvas id="editorCanvas"></canvas>
                     </div>
                 </div>
                 
                 <!-- 底部提示 -->
-                <div style="padding:10px 20px;background:#16213e;border-radius:0 0 12px 12px;border-top:1px solid #0f3460;color:#aaa;font-size:0.85rem;">
+                <div style="padding:10px 20px;background:#FFF4E6;border-radius:0 0 16px 16px;border-top:1px solid rgba(194,65,12,0.15);color:#6B7280;font-size:0.85rem;">
                     <i class="fas fa-info-circle"></i> 提示：选中对象后可拖拽、缩放、旋转 | 双击文字可编辑 | 使用画笔工具自由绘制
                 </div>
             </div>
@@ -1389,7 +1440,7 @@ async def index():
                 // 初始化Fabric.js画布
                 if (!editorCanvas) {
                     editorCanvas = new fabric.Canvas('editorCanvas', {
-                        backgroundColor: '#1a1a2e',
+                        backgroundColor: '#FFF4E6',
                         selection: true,
                         preserveObjectStacking: true,
                         enableRetinaScaling: true
@@ -1442,8 +1493,8 @@ async def index():
                 }
                 isDrawingMode = false;
                 isEraserMode = false;
-                document.getElementById('drawingModeBtn').style.background = '#0f3460';
-                document.getElementById('eraserModeBtn').style.background = '#0f3460';
+                document.getElementById('drawingModeBtn').style.background = 'rgba(194,65,12,0.08)';
+                document.getElementById('eraserModeBtn').style.background = 'rgba(194,65,12,0.08)';
             }
             
             // 添加文字
@@ -1547,10 +1598,10 @@ async def index():
                     editorCanvas.freeDrawingBrush = new fabric.PencilBrush(editorCanvas);
                     editorCanvas.freeDrawingBrush.color = getCurrentColor();
                     editorCanvas.freeDrawingBrush.width = 3;
-                    document.getElementById('drawingModeBtn').style.background = '#e94560';
+                    document.getElementById('drawingModeBtn').style.background = '#C2410C';
                 } else {
                     editorCanvas.isDrawingMode = false;
-                    document.getElementById('drawingModeBtn').style.background = '#0f3460';
+                    document.getElementById('drawingModeBtn').style.background = 'rgba(194,65,12,0.08)';
                 }
             }
             
@@ -1738,6 +1789,7 @@ async def study():
         html_content += inject_block
 
     return html_content
+
 
 
 # ============ AI助教 ============
@@ -3166,7 +3218,61 @@ async def health():
     }
 
 
+# ============ Fabric.js编辑器 ============
+@app.get("/fabric-editor", response_class=HTMLResponse)
+async def fabric_editor():
+    """Fabric.js独立编辑器页面"""
+    FABRIC_FILE = Path(__file__).parent / "fabric_editor.html"
+    if not FABRIC_FILE.exists():
+        raise HTTPException(status_code=404, detail="Fabric编辑器文件不存在")
+    
+    with open(FABRIC_FILE, 'r', encoding='utf-8') as f:
+        html_content = f.read()
+    
+    return html_content
+
+
+# ============ 3D学习空间 ============
+@app.get("/3d-space", response_class=HTMLResponse)
+async def three_d_space():
+    """3D学习空间页面"""
+    THREE_FILE = Path(__file__).parent / "three-showcase.html"
+    if not THREE_FILE.exists():
+        raise HTTPException(status_code=404, detail="3D学习空间文件不存在")
+    
+    with open(THREE_FILE, 'r', encoding='utf-8') as f:
+        html_content = f.read()
+    
+    return html_content
+
+
+# ============ 数据看板 ============
+@app.get("/three-showcase", response_class=HTMLResponse)
+async def three_showcase_alias():
+    """three-showcase.html compatible route"""
+    return await three_d_space()
+
+
+@app.get("/data-board", response_class=HTMLResponse)
+async def data_board():
+    """数据可视化看板页面"""
+    ECHARTS_FILE = Path(__file__).parent / "echarts_analysis.html"
+    if not ECHARTS_FILE.exists():
+        raise HTTPException(status_code=404, detail="数据看板文件不存在")
+    
+    with open(ECHARTS_FILE, 'r', encoding='utf-8') as f:
+        html_content = f.read()
+    
+    return html_content
+
+
 # ============ 启动 ============
+@app.get("/echarts-analysis", response_class=HTMLResponse)
+async def echarts_analysis_alias():
+    """echarts_analysis.html compatible route"""
+    return await data_board()
+
+
 if __name__ == "__main__":
     print("""
 ╔══════════════════════════════════════════════════════════════╗
@@ -3178,6 +3284,9 @@ if __name__ == "__main__":
 ║    微课观影: http://localhost:9000/                        ║
 ║    课后学习: http://localhost:9000/study                    ║
 ║    AI助教:   http://localhost:9000/ai-tutor                ║
+║    3D学习空间: http://localhost:9000/3d-space              ║
+║    数据看板: http://localhost:9000/data-board               ║
+║    Fabric编辑器: http://localhost:9000/fabric-editor        ║
 ╚══════════════════════════════════════════════════════════════╝
     """)
 

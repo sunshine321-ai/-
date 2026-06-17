@@ -1,0 +1,1867 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>卷积核3D可视化 · Three.js互动展示</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-bg-light: #FFF4E6;
+            --color-surface-light: #FFFBF5;
+            --color-card-light: #FFFFFF;
+            --color-text-main-light: #1F2937;
+            --color-text-muted-light: #6B7280;
+            --color-border-light: rgba(31,41,55,0.14);
+            --color-bg-dark: #1A0F00;
+            --color-surface-dark: #2A1800;
+            --color-card-dark: #3A2200;
+            --color-text-main-dark: #FEF3C7;
+            --color-text-muted-dark: #D1A070;
+            --color-border-dark: rgba(217,119,6,0.25);
+            --color-accent: #B45309;
+            --color-accent-dark: #D97706;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Nunito', 'PingFang SC', -apple-system, sans-serif;
+            background-color: var(--color-bg-light);
+            color: var(--color-text-main-light);
+            transition: background-color 0.3s, color 0.3s;
+            overflow: hidden;
+        }
+
+        body.dark {
+            background-color: var(--color-bg-dark);
+            color: var(--color-text-main-dark);
+        }
+
+        .top-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: rgba(255, 244, 230, 0.95);
+            border-bottom: 1px solid var(--color-border-light);
+            backdrop-filter: blur(12px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            gap: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        body.dark .top-nav {
+            background: rgba(42, 24, 0, 0.95);
+            border-bottom-color: var(--color-border-dark);
+        }
+
+        .home-btn {
+            background: none;
+            border: none;
+            color: var(--color-text-muted-light);
+            font-size: 15px;
+            cursor: pointer;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .home-btn:hover {
+            background: rgba(180,83,9,0.12);
+            color: var(--color-accent);
+        }
+
+        body.dark .home-btn:hover {
+            color: var(--color-accent-dark);
+        }
+
+        .title {
+            font-size: 19px;
+            font-weight: 600;
+            margin-left: auto;
+            margin-right: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .title-icon {
+            animation: rotate 8s linear infinite;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .theme-toggle {
+            margin-left: auto;
+            background: rgba(180,83,9,0.1);
+            border: 1px solid var(--color-border-light);
+            cursor: pointer;
+            font-size: 18px;
+            color: var(--color-text-muted-light);
+            transition: all 0.2s;
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        body.dark .theme-toggle {
+            background: rgba(217,119,6,0.1);
+            border-color: var(--color-border-dark);
+            color: var(--color-text-muted-dark);
+        }
+
+        .theme-toggle:hover {
+            background: rgba(180,83,9,0.2);
+        }
+
+        .main-content {
+            display: flex;
+            margin-top: 60px;
+            width: 100%;
+            height: calc(100vh - 60px);
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            background: linear-gradient(180deg, #FFF4E6 0%, #FFFBF5 50%, #FEF9F3 100%);
+        }
+
+        body.dark .canvas-container {
+            background: linear-gradient(180deg, #1A0F00 0%, #2A1800 50%, #1F1200 100%);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .info-overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.9);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--color-border-light);
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 12px;
+            color: var(--color-text-muted-light);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        body.dark .info-overlay {
+            background: rgba(42, 24, 0, 0.9);
+            border-color: var(--color-border-dark);
+            color: var(--color-text-muted-dark);
+        }
+
+        .info-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .scene-badge {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(180,83,9,0.9);
+            color: #FFF;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            pointer-events: none;
+            transition: all 0.4s ease;
+        }
+
+        .control-panel {
+            width: 320px;
+            background: var(--color-surface-light);
+            border-left: 1px solid var(--color-border-light);
+            overflow-y: auto;
+            padding: 20px;
+            box-shadow: -4px 0 16px rgba(0,0,0,0.04);
+        }
+
+        body.dark .control-panel {
+            background: var(--color-surface-dark);
+            border-left-color: var(--color-border-dark);
+        }
+
+        .control-group {
+            margin-bottom: 24px;
+        }
+
+        .control-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--color-text-muted-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        body.dark .control-label {
+            color: var(--color-text-muted-dark);
+        }
+
+        .slider-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .slider-input {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .slider-input input[type="range"] {
+            flex: 1;
+            height: 5px;
+            border-radius: 3px;
+            background: linear-gradient(90deg, rgba(180,83,9,0.2) 0%, rgba(180,83,9,0.4) 100%);
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .slider-input input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--color-accent);
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(180,83,9,0.35);
+            transition: transform 0.2s;
+        }
+
+        .slider-input input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        .slider-input input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--color-accent);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(180,83,9,0.35);
+        }
+
+        .slider-value {
+            font-size: 13px;
+            min-width: 40px;
+            text-align: right;
+            color: var(--color-accent);
+            font-weight: 600;
+        }
+
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .button-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .button-row button {
+            flex: 1;
+        }
+
+        button {
+            padding: 11px 18px;
+            border: 1px solid var(--color-border-light);
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            background: var(--color-card-light);
+            color: var(--color-text-main-light);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        body.dark button {
+            background: var(--color-card-dark);
+            border-color: var(--color-border-dark);
+            color: var(--color-text-main-dark);
+        }
+
+        button:hover {
+            background: rgba(180,83,9,0.08);
+            border-color: var(--color-accent);
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.primary {
+            background: linear-gradient(135deg, var(--color-accent) 0%, #A44704 100%);
+            color: white;
+            border-color: var(--color-accent);
+        }
+
+        button.primary:hover {
+            background: linear-gradient(135deg, #A44704 0%, #943F03 100%);
+        }
+
+        button.active {
+            background: rgba(180,83,9,0.15);
+            border-color: var(--color-accent);
+            color: var(--color-accent);
+        }
+
+        button.small {
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+
+        .info-box {
+            background: rgba(180,83,9,0.08);
+            border: 1px solid rgba(180,83,9,0.2);
+            border-radius: 10px;
+            padding: 14px;
+            font-size: 12px;
+            line-height: 1.6;
+            color: var(--color-text-muted-light);
+        }
+
+        body.dark .info-box {
+            background: rgba(217,119,6,0.1);
+            border-color: rgba(217,119,6,0.3);
+            color: var(--color-text-muted-dark);
+        }
+
+        .matrix-display {
+            background: rgba(31,41,55,0.04);
+            border: 1px solid var(--color-border-light);
+            border-radius: 8px;
+            padding: 14px;
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            color: var(--color-accent);
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        body.dark .matrix-display {
+            background: rgba(217,119,6,0.05);
+            border-color: var(--color-border-dark);
+        }
+
+        .scene-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .scene-option {
+            padding: 10px 14px;
+            background: var(--color-card-light);
+            border: 1px solid var(--color-border-light);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        body.dark .scene-option {
+            background: var(--color-card-dark);
+            border-color: var(--color-border-dark);
+        }
+
+        .scene-option:hover {
+            border-color: var(--color-accent);
+            background: rgba(180,83,9,0.05);
+        }
+
+        .scene-option.active {
+            background: rgba(180,83,9,0.15);
+            border-color: var(--color-accent);
+        }
+
+        .scene-icon {
+            font-size: 16px;
+        }
+
+        .scene-name {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .computation-display {
+            background: rgba(31,41,55,0.04);
+            border: 1px solid var(--color-border-light);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+            font-size: 11px;
+            line-height: 1.4;
+            color: var(--color-accent);
+            min-height: 40px;
+            transition: all 0.3s;
+        }
+
+        body.dark .computation-display {
+            background: rgba(217,119,6,0.05);
+            border-color: var(--color-border-dark);
+        }
+
+        @media (max-width: 768px) {
+            .control-panel {
+                width: 220px;
+                padding: 16px;
+            }
+
+            .title {
+                font-size: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-nav">
+        <a href="/" class="home-btn">
+            <i class="fas fa-arrow-left"></i>
+            <span>返回首页</span>
+        </a>
+        <h1 class="title">
+            <i class="fas fa-cube title-icon"></i>
+            <span>卷积核3D可视化</span>
+        </h1>
+        <button class="theme-toggle" id="themeToggle">
+            <i class="fas fa-moon"></i>
+        </button>
+    </div>
+
+    <div class="main-content">
+        <div class="canvas-container" id="canvas">
+            <div class="scene-badge" id="sceneBadge">卷积核矩阵</div>
+            <div class="info-overlay">
+                <div class="info-item">
+                    <i class="fas fa-mouse-pointer"></i>
+                    <span>拖动旋转</span>
+                </div>
+                <div class="info-item">
+                    <i class="fas fa-search-plus"></i>
+                    <span>滚轮缩放</span>
+                </div>
+                <div class="info-item">
+                    <i class="fas fa-hand-pointer"></i>
+                    <span>右键平移</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <div class="control-group">
+                <label class="control-label">🎭 场景选择</label>
+                <div class="scene-selector" id="sceneSelector">
+                    <div class="scene-option active" data-scene="kernel">
+                        <i class="fas fa-th scene-icon"></i>
+                        <span class="scene-name">卷积核矩阵</span>
+                    </div>
+                    <div class="scene-option" data-scene="sliding">
+                        <i class="fas fa-arrows-alt scene-icon"></i>
+                        <span class="scene-name">卷积滑动过程</span>
+                    </div>
+                    <div class="scene-option" data-scene="cnn">
+                        <i class="fas fa-layer-group scene-icon"></i>
+                        <span class="scene-name">CNN层级结构</span>
+                    </div>
+                    <div class="scene-option" data-scene="kernels">
+                        <i class="fas fa-filter scene-icon"></i>
+                        <span class="scene-name">经典卷积核对比</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">🔄 动画控制</label>
+                <div class="button-group">
+                    <button id="autoRotateBtn" class="primary">
+                        <i class="fas fa-sync"></i>
+                        <span>启用自动旋转</span>
+                    </button>
+                    <button id="resetBtn">
+                        <i class="fas fa-undo"></i>
+                        <span>重置视图</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">⚙️ 场景参数</label>
+                <div class="slider-container">
+                    <div class="slider-input">
+                        <span style="font-size:12px; width:60px;">亮度:</span>
+                        <input type="range" id="brightness" min="0.3" max="1.5" step="0.1" value="1">
+                        <span class="slider-value" id="brightnessValue">1.0</span>
+                    </div>
+                    <div class="slider-input">
+                        <span style="font-size:12px; width:60px;">旋转速度:</span>
+                        <input type="range" id="rotationSpeed" min="0" max="0.02" step="0.001" value="0.005">
+                        <span class="slider-value" id="rotationSpeedValue">0.005</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group" id="kernelSizeControl">
+                <label class="control-label">🧮 卷积核大小</label>
+                <div class="slider-container">
+                    <div class="slider-input">
+                        <input type="range" id="kernelSize" min="3" max="7" step="2" value="3">
+                        <span class="slider-value" id="kernelSizeValue">3</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group" id="kernelPresetControl">
+                <label class="control-label">📐 预设卷积核</label>
+                <div class="button-group">
+                    <button id="presetSobelX" class="active">Sobel X</button>
+                    <button id="presetSobelY">Sobel Y</button>
+                    <button id="presetLaplacian">Laplacian</button>
+                    <button id="presetGaussian">Gaussian模糊</button>
+                </div>
+            </div>
+
+            <div class="control-group" id="kernelTypeControl" style="display:none;">
+                <label class="control-label">🔍 卷积核类型</label>
+                <div class="button-group">
+                    <button id="kernelEdge" class="active">边缘检测</button>
+                    <button id="kernelBlur">均值模糊</button>
+                    <button id="kernelSharpen">锐化</button>
+                    <button id="kernelEmboss">浮雕</button>
+                </div>
+            </div>
+
+            <div class="control-group" id="slidingControl" style="display:none;">
+                <label class="control-label">▶️ 卷积过程演示</label>
+                <div class="button-row">
+                    <button id="slidingReset" class="small"><i class="fas fa-undo"></i> 重置</button>
+                    <button id="slidingStepBack" class="small"><i class="fas fa-step-backward"></i></button>
+                    <button id="slidingPlay" class="small primary"><i class="fas fa-play"></i> 播放</button>
+                    <button id="slidingStepFwd" class="small"><i class="fas fa-step-forward"></i></button>
+                </div>
+                <div class="slider-container" style="margin-top:10px;">
+                    <div class="slider-input">
+                        <span style="font-size:12px; width:60px;">速度:</span>
+                        <input type="range" id="slidingSpeed" min="0.2" max="3" step="0.1" value="1">
+                        <span class="slider-value" id="slidingSpeedValue">1.0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-group" id="slidingKernelControl" style="display:none;">
+                <label class="control-label">🔍 演示卷积核</label>
+                <div class="button-group">
+                    <button id="slidingKernelEdge" class="active">边缘检测</button>
+                    <button id="slidingKernelBlur">均值模糊</button>
+                    <button id="slidingKernelSharpen">锐化</button>
+                    <button id="slidingKernelEmboss">浮雕</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label class="control-label">📈 卷积核矩阵</label>
+                <div class="matrix-display" id="matrixDisplay">
+[  1   0  -1  ]
+[  2   0  -2  ]
+[  1   0  -1  ]
+                </div>
+            </div>
+
+            <div class="control-group" id="computationGroup" style="display:none;">
+                <label class="control-label">🔢 实时计算</label>
+                <div class="computation-display" id="computationDisplay">
+等待滑动...
+                </div>
+            </div>
+
+            <div class="control-group">
+                <div class="info-box">
+                    <strong>💡 交互提示：</strong>
+                    <br>• <strong>拖动鼠标左键</strong>：旋转3D模型
+                    <br>• <strong>滚动滚轮</strong>：缩放视图
+                    <br>• <strong>拖动鼠标右键</strong>：平移视图
+                    <br>• <strong>切换场景</strong>：查看不同卷积核知识点
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // ============================================
+        // Three.js 卷积核3D可视化系统
+        // 功能：交互式展示卷积神经网络核心概念
+        // 包含场景：卷积核矩阵、卷积过程演示、CNN层级结构、经典卷积核对比
+        // ============================================
+
+        // 全局变量 - Three.js场景核心对象
+        let scene, camera, renderer;
+        let currentSceneType = 'kernel';  // 当前场景类型：kernel/sliding/cnn/kernels
+        let autoRotate = false;            // 自动旋转开关
+        let rotationSpeed = 0.005;        // 旋转速度
+        let currentBrightness = 1;        // 亮度调节
+        let currentKernelType = 'edge';    // 当前卷积核类型（对比场景用）
+        let currentPreset = 'sobelX';      // 当前卷积核预设
+        let mainGroup;                     // 场景主容器
+        let particleSystems = [];          // 粒子系统数组
+        let clock = new THREE.Clock();     // 时钟，用于动画控制
+
+        // 鼠标交互状态
+        let isLeftDragging = false;        // 左键拖拽状态
+        let isRightDragging = false;       // 右键拖拽状态
+        let prevMouse = { x: 0, y: 0 };
+
+        let slidingPlaying = false;
+        let slidingSpeed = 1;
+        let slidingData = null;
+        let slidingKernelType = 'edge';
+        let slidingCompleted = false;
+
+        const sceneNames = {
+            kernel: '卷积核矩阵',
+            sliding: '卷积过程演示',
+            cnn: 'CNN层级结构',
+            kernels: '经典卷积核对比'
+        };
+
+        // ============================================
+        // 卷积核预设数据 - 不同尺寸和类型的卷积核矩阵
+        // 用于卷积核矩阵展示场景和滑动演示场景
+        // ============================================
+        const kernelPresets = {
+            sobelX: {
+                name: 'Sobel X（水平边缘）',
+                matrix3: [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]],
+                matrix5: [[-1, -2, 0, 2, 1], [-2, -3, 0, 3, 2], [-3, -5, 0, 5, 3], [-2, -3, 0, 3, 2], [-1, -2, 0, 2, 1]],
+                matrix7: [[-1, -1, -2, 0, 2, 1, 1], [-1, -2, -3, 0, 3, 2, 1], [-2, -3, -4, 0, 4, 3, 2], [-3, -4, -5, 0, 5, 4, 3], [-2, -3, -4, 0, 4, 3, 2], [-1, -2, -3, 0, 3, 2, 1], [-1, -1, -2, 0, 2, 1, 1]],
+                desc: '检测图像中的垂直边缘，对水平方向的亮度变化敏感'
+            },
+            sobelY: {
+                name: 'Sobel Y（垂直边缘）',
+                matrix3: [[-1, -2, -1], [0, 0, 0], [1, 2, 1]],
+                matrix5: [[-1, -2, -3, -2, -1], [-2, -3, -5, -3, -2], [0, 0, 0, 0, 0], [2, 3, 5, 3, 2], [1, 2, 3, 2, 1]],
+                matrix7: [[-1, -1, -2, -3, -2, -1, -1], [-1, -2, -3, -4, -3, -2, -1], [-2, -3, -4, -5, -4, -3, -2], [0, 0, 0, 0, 0, 0, 0], [2, 3, 4, 5, 4, 3, 2], [1, 2, 3, 4, 3, 2, 1], [1, 1, 2, 3, 2, 1, 1]],
+                desc: '检测图像中的水平边缘，对垂直方向的亮度变化敏感'
+            },
+            laplacian: {
+                name: 'Laplacian（边缘增强）',
+                matrix3: [[0, -1, 0], [-1, 4, -1], [0, -1, 0]],
+                matrix5: [[0, 0, -1, 0, 0], [0, -1, -2, -1, 0], [-1, -2, 16, -2, -1], [0, -1, -2, -1, 0], [0, 0, -1, 0, 0]],
+                matrix7: [[0, 0, 0, -1, 0, 0, 0], [0, 0, -1, -2, -1, 0, 0], [0, -1, -2, -3, -2, -1, 0], [-1, -2, -3, 24, -3, -2, -1], [0, -1, -2, -3, -2, -1, 0], [0, 0, -1, -2, -1, 0, 0], [0, 0, 0, -1, 0, 0, 0]],
+                desc: '二阶导数算子，检测所有方向的边缘，对噪声敏感'
+            },
+            gaussian: {
+                name: 'Gaussian模糊',
+                matrix3: [[1, 2, 1], [2, 4, 2], [1, 2, 1]],
+                matrix5: [[1, 4, 7, 4, 1], [4, 16, 26, 16, 4], [7, 26, 41, 26, 7], [4, 16, 26, 16, 4], [1, 4, 7, 4, 1]],
+                matrix7: [[1, 1, 2, 2, 2, 1, 1], [1, 2, 2, 4, 2, 2, 1], [2, 2, 4, 8, 4, 2, 2], [2, 4, 8, 16, 8, 4, 2], [2, 2, 4, 8, 4, 2, 2], [1, 2, 2, 4, 2, 2, 1], [1, 1, 2, 2, 2, 1, 1]],
+                desc: '高斯平滑滤波，用于降噪和模糊处理，权重呈正态分布'
+            }
+        };
+
+        // ============================================
+        // 经典卷积核对比数据 - 用于对比展示不同卷积核的效果
+        // 包含：边缘检测、均值模糊、锐化、浮雕
+        // ============================================
+        const kernelPresetsCompare = {
+            edge: {
+                name: '边缘检测',
+                matrix: [[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]],
+                color: 0xDC2626,
+                desc: '拉普拉斯边缘检测核，增强边缘对比度'
+            },
+            blur: {
+                name: '均值模糊',
+                matrix: [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+                color: 0x3B82F6,
+                desc: '均值滤波，取周围像素平均值，实现平滑效果'
+            },
+            sharpen: {
+                name: '锐化',
+                matrix: [[0, -1, 0], [-1, 5, -1], [0, -1, 0]],
+                color: 0x059669,
+                desc: '增强图像细节和边缘，使图像更加清晰'
+            },
+            emboss: {
+                name: '浮雕',
+                matrix: [[-2, -1, 0], [-1, 1, 1], [0, 1, 2]],
+                color: 0x8B5CF6,
+                desc: '产生浮雕效果，突出亮度变化的方向性'
+            }
+        };
+
+        function getCurrentKernelMatrix() {
+            if (currentSceneType === 'kernel') {
+                const size = parseInt(document.getElementById('kernelSize').value);
+                const preset = kernelPresets[currentPreset];
+                return preset['matrix' + size] || preset.matrix3;
+            } else if (currentSceneType === 'kernels') {
+                return kernelPresetsCompare[currentKernelType].matrix;
+            }
+            return kernelPresets.sobelX.matrix3;
+        }
+
+        function formatMatrixHTML(matrix) {
+            let html = '';
+            for (let i = 0; i < matrix.length; i++) {
+                let rowHTML = '  [';
+                for (let j = 0; j < matrix[i].length; j++) {
+                    const value = matrix[i][j];
+                    rowHTML += ' ' + (value >= 0 ? ' ' : '') + value;
+                }
+                rowHTML += '  ]';
+                html += rowHTML + '\n';
+            }
+            return html;
+        }
+
+        function updateMatrixDisplay(matrix) {
+            document.getElementById('matrixDisplay').textContent = formatMatrixHTML(matrix);
+        }
+
+        const themeToggle = document.getElementById('themeToggle');
+        const savedTheme = localStorage.getItem('theme') || 'light';
+
+        if (savedTheme === 'dark') {
+            document.body.classList.add('dark');
+            themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+        }
+
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark');
+            const isDark = document.body.classList.contains('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            themeToggle.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+            updateBackgroundColor();
+        });
+
+        // ============================================
+        // Three.js场景初始化
+        // 创建场景、相机、渲染器，并设置光照和交互
+        // ============================================
+        function initThreeJS() {
+            const canvasElement = document.getElementById('canvas');
+
+            scene = new THREE.Scene();
+
+            camera = new THREE.PerspectiveCamera(60, canvasElement.clientWidth / canvasElement.clientHeight, 0.1, 100);
+            camera.position.set(8, 5, 10);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(canvasElement.clientWidth, canvasElement.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            canvasElement.appendChild(renderer.domElement);
+
+            setupLights();
+            switchScene('kernel');
+            updateBackgroundColor();
+
+            window.addEventListener('resize', onWindowResize);
+            setupMouseControls(canvasElement);
+
+            animate();
+        }
+
+        function setupLights() {
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            ambientLight.name = 'ambientLight';
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(8, 10, 8);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.camera.left = -15;
+            directionalLight.shadow.camera.right = 15;
+            directionalLight.shadow.camera.top = 15;
+            directionalLight.shadow.camera.bottom = -15;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            directionalLight.name = 'directionalLight';
+            scene.add(directionalLight);
+
+            const pointLight = new THREE.PointLight(0xffaa00, 0.4);
+            pointLight.position.set(-5, 5, 5);
+            pointLight.name = 'pointLight';
+            scene.add(pointLight);
+        }
+
+        function setupMouseControls(canvasElement) {
+            canvasElement.addEventListener('mousedown', (e) => {
+                if (e.button === 0) {
+                    isLeftDragging = true;
+                } else if (e.button === 2) {
+                    isRightDragging = true;
+                }
+                prevMouse = { x: e.clientX, y: e.clientY };
+            });
+
+            canvasElement.addEventListener('mousemove', (e) => {
+                if (!mainGroup) return;
+                const dx = e.clientX - prevMouse.x;
+                const dy = e.clientY - prevMouse.y;
+
+                if (isLeftDragging) {
+                    mainGroup.rotation.y += dx * 0.01;
+                    mainGroup.rotation.x += dy * 0.01;
+                } else if (isRightDragging) {
+                    mainGroup.position.x += dx * 0.02;
+                    mainGroup.position.y -= dy * 0.02;
+                }
+                prevMouse = { x: e.clientX, y: e.clientY };
+            });
+
+            window.addEventListener('mouseup', () => {
+                isLeftDragging = false;
+                isRightDragging = false;
+            });
+
+            canvasElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                camera.position.z += e.deltaY * 0.01;
+                camera.position.z = Math.max(3, Math.min(30, camera.position.z));
+            });
+
+            canvasElement.addEventListener('contextmenu', (e) => e.preventDefault());
+        }
+
+        function clearScene() {
+            particleSystems = [];
+            while (scene.children.length > 0) {
+                const child = scene.children[0];
+                if (child.type !== 'AmbientLight' &&
+                    child.type !== 'DirectionalLight' &&
+                    child.type !== 'PointLight') {
+                    disposeObject(child);
+                    scene.remove(child);
+                } else {
+                    scene.children.shift();
+                }
+            }
+        }
+
+        function disposeObject(obj) {
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) {
+                if (Array.isArray(obj.material)) {
+                    obj.material.forEach(m => disposeMaterial(m));
+                } else {
+                    disposeMaterial(obj.material);
+                }
+            }
+            while (obj.children && obj.children.length > 0) {
+                disposeObject(obj.children[0]);
+                obj.remove(obj.children[0]);
+            }
+        }
+
+        function disposeMaterial(material) {
+            if (material.map) material.map.dispose();
+            if (material.emissiveMap) material.emissiveMap.dispose();
+            material.dispose();
+        }
+
+        // ============================================
+        // 场景切换
+        // 参数：sceneType - kernel(卷积核矩阵)/sliding(卷积过程)/cnn(CNN层级)/kernels(卷积核对比)
+        // ============================================
+        function switchScene(sceneType) {
+            currentSceneType = sceneType;
+            slidingPlaying = false;
+            slidingData = null;
+            slidingCompleted = false;
+
+            clearScene();
+            setupLights();
+            mainGroup = new THREE.Group();
+            scene.add(mainGroup);
+
+            switch (sceneType) {
+                case 'kernel':
+                    createKernelScene();
+                    break;
+                case 'sliding':
+                    createSlidingScene();
+                    break;
+                case 'cnn':
+                    createCNNScene();
+                    break;
+                case 'kernels':
+                    createKernelsCompareScene();
+                    break;
+            }
+
+            document.querySelectorAll('.scene-option').forEach(opt => {
+                opt.classList.toggle('active', opt.dataset.scene === sceneType);
+            });
+
+            document.getElementById('sceneBadge').textContent = sceneNames[sceneType] || '';
+
+            document.getElementById('kernelSizeControl').style.display =
+                (sceneType === 'kernel') ? 'block' : 'none';
+            document.getElementById('kernelPresetControl').style.display =
+                (sceneType === 'kernel') ? 'block' : 'none';
+            document.getElementById('kernelTypeControl').style.display =
+                (sceneType === 'kernels') ? 'block' : 'none';
+            document.getElementById('slidingControl').style.display =
+                (sceneType === 'sliding') ? 'block' : 'none';
+            document.getElementById('slidingKernelControl').style.display =
+                (sceneType === 'sliding') ? 'block' : 'none';
+            document.getElementById('computationGroup').style.display =
+                (sceneType === 'sliding') ? 'block' : 'none';
+
+            updateMatrixDisplay(getCurrentKernelMatrix());
+
+            if (sceneType === 'sliding') {
+                document.getElementById('slidingPlay').innerHTML = '<i class="fas fa-play"></i> 播放';
+            }
+        }
+
+        function createGlowBox(width, height, depth, color, intensity) {
+            const group = new THREE.Group();
+
+            const geometry = new THREE.BoxGeometry(width, height, depth);
+            const material = new THREE.MeshStandardMaterial({
+                color: color,
+                metalness: 0.2,
+                roughness: 0.3,
+                emissive: color,
+                emissiveIntensity: intensity || 0.3
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            group.add(mesh);
+
+            const edgeGeom = new THREE.EdgesGeometry(geometry);
+            const edgeMat = new THREE.LineBasicMaterial({
+                color: new THREE.Color(color).multiplyScalar(1.5),
+                transparent: true,
+                opacity: 0.6
+            });
+            const edgeLine = new THREE.LineSegments(edgeGeom, edgeMat);
+            group.add(edgeLine);
+
+            return group;
+        }
+
+        function createTextSprite(text, fontSize, color, bgColor) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 768;
+            canvas.height = 160;
+            const ctx = canvas.getContext('2d');
+
+            if (bgColor) {
+                ctx.fillStyle = bgColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            const fs = fontSize || 36;
+            ctx.font = 'bold ' + fs + 'px "Microsoft YaHei", "PingFang SC", Arial, sans-serif';
+            ctx.fillStyle = color || '#1F2937';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+
+            const maxWidth = canvas.width - 40;
+            const words = text.split('');
+            const lines = [];
+            let currentLine = '';
+
+            words.forEach(word => {
+                const testLine = currentLine + word;
+                const metrics = ctx.measureText(testLine);
+                if (metrics.width > maxWidth && currentLine) {
+                    lines.push(currentLine);
+                    currentLine = word;
+                } else {
+                    currentLine = testLine;
+                }
+            });
+            if (currentLine) {
+                lines.push(currentLine);
+            }
+
+            const lineHeight = fs * 1.4;
+            const textHeight = lines.length * lineHeight;
+            const startY = Math.max(fs / 2, canvas.height / 2 - textHeight / 2);
+            
+            lines.forEach((line, i) => {
+                ctx.fillText(line, canvas.width / 2, startY + i * lineHeight);
+            });
+
+            ctx.shadowColor = 'transparent';
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.minFilter = THREE.LinearFilter;
+            const spriteMaterial = new THREE.SpriteMaterial({
+                map: texture,
+                transparent: true,
+                depthTest: false
+            });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(5, 1.2, 1);
+            return sprite;
+        }
+
+        function createParticleTrail(from, to, color, count) {
+            const particles = new THREE.BufferGeometry();
+            const positions = new Float32Array(count * 3);
+            const colors = new Float32Array(count * 3);
+
+            const baseColor = new THREE.Color(color);
+
+            for (let i = 0; i < count; i++) {
+                const t = i / count;
+                positions[i * 3] = from.x + (to.x - from.x) * t + (Math.random() - 0.5) * 0.5;
+                positions[i * 3 + 1] = from.y + (to.y - from.y) * t + (Math.random() - 0.5) * 0.5;
+                positions[i * 3 + 2] = from.z + (to.z - from.z) * t + (Math.random() - 0.5) * 0.5;
+
+                const alpha = 1 - Math.abs(t - 0.5) * 2;
+                colors[i * 3] = baseColor.r;
+                colors[i * 3 + 1] = baseColor.g;
+                colors[i * 3 + 2] = baseColor.b;
+            }
+
+            particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            particles.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const particleMat = new THREE.PointsMaterial({
+                size: 0.08,
+                vertexColors: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                transparent: true,
+                opacity: 0.7
+            });
+
+            const particleSystem = new THREE.Points(particles, particleMat);
+            particleSystem.userData = {
+                from: from.clone(),
+                to: to.clone(),
+                speed: 0.3 + Math.random() * 0.5,
+                offset: Math.random() * Math.PI * 2
+            };
+            particleSystems.push(particleSystem);
+            return particleSystem;
+        }
+
+        function addGridFloor() {
+            const gridHelper = new THREE.GridHelper(20, 20, 0x8B4513, 0xD2B48C);
+            gridHelper.position.y = -3;
+            scene.add(gridHelper);
+        }
+
+        function updateBackgroundColor() {
+            const isDark = document.body.classList.contains('dark');
+            renderer.setClearColor(isDark ? 0x1a0f00 : 0xfff4e6, 0.95);
+        }
+
+        function onWindowResize() {
+            const canvasElement = document.getElementById('canvas');
+            const width = canvasElement.clientWidth;
+            const height = canvasElement.clientHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        function createKernelScene() {
+            const size = parseInt(document.getElementById('kernelSize').value);
+            const preset = kernelPresets[currentPreset];
+            const matrix = preset['matrix' + size] || preset.matrix3;
+            const cellSize = 1.2;
+            const spacing = 0.08;
+            const totalSize = size * (cellSize + spacing) - spacing;
+            const offset = totalSize / 2 - cellSize / 2;
+
+            updateMatrixDisplay(matrix);
+
+            let maxAbs = 0;
+            for (let i = 0; i < size; i++) {
+                for (let j = 0; j < size; j++) {
+                    maxAbs = Math.max(maxAbs, Math.abs(matrix[i][j]));
+                }
+            }
+
+            for (let i = 0; i < size; i++) {
+                for (let j = 0; j < size; j++) {
+                    const value = matrix[i][j];
+                    const absVal = Math.abs(value);
+                    const normalizedValue = maxAbs > 0 ? (value + maxAbs) / (2 * maxAbs) : 0.5;
+
+                    const height = 0.2 + absVal * 0.15;
+                    const geometry = new THREE.BoxGeometry(cellSize - spacing, cellSize - spacing, height);
+
+                    const hue = value >= 0 ? 0.08 + normalizedValue * 0.12 : 0.55 + (1 - normalizedValue) * 0.1;
+                    const color = new THREE.Color();
+                    color.setHSL(hue, 0.7, 0.35 + normalizedValue * 0.25);
+
+                    const material = new THREE.MeshStandardMaterial({
+                        color: color,
+                        metalness: 0.3,
+                        roughness: 0.4,
+                        emissive: new THREE.Color().setHSL(hue, 0.5, 0.15),
+                        emissiveIntensity: 0.5
+                    });
+
+                    const mesh = new THREE.Mesh(geometry, material);
+
+                    const x = j * (cellSize + spacing) - offset;
+                    const y = -i * (cellSize + spacing) + offset;
+                    const z = value * 0.15;
+
+                    mesh.position.set(x, y, z);
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    mainGroup.add(mesh);
+
+                    const labelCanvas = document.createElement('canvas');
+                    labelCanvas.width = 128;
+                    labelCanvas.height = 128;
+                    const ctx = labelCanvas.getContext('2d');
+                    ctx.fillStyle = '#FFF';
+                    ctx.font = 'bold 48px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(value.toString(), 64, 64);
+
+                    const texture = new THREE.CanvasTexture(labelCanvas);
+                    texture.minFilter = THREE.LinearFilter;
+                    const labelGeometry = new THREE.PlaneGeometry(cellSize * 0.5, cellSize * 0.5);
+                    const labelMaterial = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
+                    const label = new THREE.Mesh(labelGeometry, labelMaterial);
+                    label.position.copy(mesh.position);
+                    label.position.z += height / 2 + 0.1;
+                    mainGroup.add(label);
+                }
+            }
+
+            const titleSprite = createTextSprite(preset.name, 42, '#B45309');
+            titleSprite.position.set(0, totalSize / 2 + 1.5, 0);
+            titleSprite.scale.set(7, 1.5, 1);
+            mainGroup.add(titleSprite);
+
+            const descSprite = createTextSprite(preset.desc, 26, '#6B7280');
+            descSprite.position.set(0, totalSize / 2 + 0.8, 0);
+            descSprite.scale.set(8, 0.8, 1);
+            mainGroup.add(descSprite);
+
+            addGridFloor();
+        }
+
+        // ============================================
+        // 场景2：卷积过程演示
+        // 展示6x6输入矩阵与3x3卷积核的滑动计算过程
+        // ============================================
+        function createSlidingScene() {
+            const inputSize = 6;
+            const kernelSize = 3;
+            const cellSize = 0.7;
+            const spacing = 0.05;
+            const totalInput = inputSize * (cellSize + spacing) - spacing;
+            const inputOffset = totalInput / 2 - cellSize / 2;
+
+            const inputMatrix = [];
+            for (let i = 0; i < inputSize; i++) {
+                const row = [];
+                for (let j = 0; j < inputSize; j++) {
+                    if (i >= 1 && i <= 2 && j >= 1 && j <= 4) {
+                        row.push(8);
+                    } else if (i >= 3 && i <= 4 && j >= 2 && j <= 3) {
+                        row.push(7);
+                    } else {
+                        row.push(Math.floor(Math.random() * 3) + 1);
+                    }
+                }
+                inputMatrix.push(row);
+            }
+
+            const kernelMatrix = kernelPresetsCompare[slidingKernelType].matrix;
+            updateMatrixDisplay(kernelMatrix);
+
+            for (let i = 0; i < inputSize; i++) {
+                for (let j = 0; j < inputSize; j++) {
+                    const value = inputMatrix[i][j];
+                    const brightness = value / 10;
+
+                    const geometry = new THREE.BoxGeometry(cellSize - spacing, cellSize - spacing, 0.2);
+                    const color = new THREE.Color();
+                    color.setHSL(0.55, 0.6, 0.25 + brightness * 0.55);
+
+                    const material = new THREE.MeshStandardMaterial({
+                        color: color,
+                        metalness: 0.1,
+                        roughness: 0.5
+                    });
+
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(
+                        j * (cellSize + spacing) - inputOffset,
+                        -i * (cellSize + spacing) + inputOffset,
+                        -0.3
+                    );
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    mesh.userData = { row: i, col: j, value: value, isInput: true };
+                    mainGroup.add(mesh);
+                }
+            }
+
+            const inputLabel = createTextSprite('输入特征图 6×6', 36, '#3B82F6');
+            inputLabel.position.set(0, totalInput / 2 + 1.2, -0.3);
+            inputLabel.scale.set(5, 1.2, 1);
+            mainGroup.add(inputLabel);
+
+            const kernelGroup = new THREE.Group();
+            const kernelTotal = kernelSize * (cellSize + spacing) - spacing;
+            const kernelOffset = kernelTotal / 2 - cellSize / 2;
+
+            for (let i = 0; i < kernelSize; i++) {
+                for (let j = 0; j < kernelSize; j++) {
+                    const geometry = new THREE.BoxGeometry(cellSize - spacing, cellSize - spacing, 0.3);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: 0xB45309,
+                        metalness: 0.2,
+                        roughness: 0.3,
+                        emissive: 0x331100,
+                        emissiveIntensity: 0.5,
+                        transparent: true,
+                        opacity: 0.75
+                    });
+
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(
+                        j * (cellSize + spacing) - kernelOffset,
+                        -i * (cellSize + spacing) + kernelOffset,
+                        0
+                    );
+                    kernelGroup.add(mesh);
+                }
+            }
+
+            const edgeGeometry = new THREE.EdgesGeometry(
+                new THREE.BoxGeometry(kernelTotal, kernelTotal, 0.3)
+            );
+            const edgeMaterial = new THREE.LineBasicMaterial({ color: 0xFFD700 });
+            const edgeBox = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+            edgeBox.position.z = 0;
+            kernelGroup.add(edgeBox);
+
+            kernelGroup.position.set(-inputOffset, inputOffset, 0);
+
+            const outputSize = inputSize - kernelSize + 1;
+            const step = cellSize + spacing;
+            const range = inputSize - kernelSize;
+
+            kernelGroup.userData = {
+                startX: -inputOffset,
+                startY: inputOffset,
+                step: step,
+                range: range,
+                row: 0,
+                col: 0,
+                _lastRow: -1,
+                _lastCol: -1,
+                inputMatrix: inputMatrix,
+                kernelMatrix: kernelMatrix,
+                outputSize: outputSize
+            };
+            mainGroup.add(kernelGroup);
+
+            const arrowCanvas = document.createElement('canvas');
+            arrowCanvas.width = 256;
+            arrowCanvas.height = 64;
+            const actx = arrowCanvas.getContext('2d');
+            actx.fillStyle = '#B45309';
+            actx.font = 'bold 36px Arial';
+            actx.textAlign = 'center';
+            actx.fillText('→ 卷积 →', 128, 40);
+
+            const arrowTexture = new THREE.CanvasTexture(arrowCanvas);
+            arrowTexture.minFilter = THREE.LinearFilter;
+            const arrowGeom = new THREE.PlaneGeometry(3, 0.8);
+            const arrowMat = new THREE.MeshBasicMaterial({ map: arrowTexture, transparent: true, side: THREE.DoubleSide });
+            const arrowPlane = new THREE.Mesh(arrowGeom, arrowMat);
+            arrowPlane.position.set(totalInput / 2 + 0.3, 0, 0.5);
+            mainGroup.add(arrowPlane);
+
+            const outputCellSize = 0.7;
+            const outputSpacing = 0.05;
+            const outputTotal = outputSize * (outputCellSize + outputSpacing) - outputSpacing;
+            const outputOffsetVal = outputTotal / 2 - outputCellSize / 2;
+            const outputStartX = totalInput / 2 + 3.5;
+
+            const outputMeshes = [];
+            for (let i = 0; i < outputSize; i++) {
+                for (let j = 0; j < outputSize; j++) {
+                    const geometry = new THREE.BoxGeometry(outputCellSize - outputSpacing, outputCellSize - outputSpacing, 0.2);
+                    const material = new THREE.MeshStandardMaterial({
+                        color: 0x9CA3AF,
+                        metalness: 0.2,
+                        roughness: 0.5,
+                        emissive: 0x000000,
+                        emissiveIntensity: 0.05
+                    });
+
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(
+                        outputStartX + j * (outputCellSize + outputSpacing) - outputOffsetVal,
+                        -i * (outputCellSize + outputSpacing) + outputOffsetVal,
+                        -0.3
+                    );
+                    mesh.userData = { row: i, col: j, isOutput: true, value: null, computed: false };
+                    mainGroup.add(mesh);
+                    outputMeshes.push(mesh);
+                }
+            }
+
+            const outputLabel = createTextSprite('输出特征图 4×4', 36, '#059669');
+            outputLabel.position.set(outputStartX, totalInput / 2 + 1.2, -0.3);
+            outputLabel.scale.set(5, 1.2, 1);
+            mainGroup.add(outputLabel);
+
+            slidingData = {
+                kernelGroup: kernelGroup,
+                inputMatrix: inputMatrix,
+                kernelMatrix: kernelMatrix,
+                inputSize: inputSize,
+                kernelSize: kernelSize,
+                outputSize: outputSize,
+                step: step,
+                range: range,
+                outputMeshes: outputMeshes,
+                outputStartX: outputStartX,
+                outputCellSize: outputCellSize,
+                outputSpacing: outputSpacing,
+                outputOffsetVal: outputOffsetVal,
+                computedCount: 0,
+                totalSteps: outputSize * outputSize
+            };
+
+            addGridFloor();
+            updateSlidingComputation();
+        }
+
+        function updateSlidingComputation() {
+            if (!slidingData) return;
+
+            const kg = slidingData.kernelGroup;
+            const data = kg.userData;
+            const row = data.row;
+            const col = Math.floor(data.col);
+            const inputMatrix = data.inputMatrix;
+            const kernelMatrix = data.kernelMatrix;
+            const kernelSize = slidingData.kernelSize;
+            const outputSize = slidingData.outputSize;
+
+            let sum = 0;
+            let detailHTML = '卷积计算 @ 位置(' + row + ',' + col + '):\n';
+            detailHTML += '──────────────────\n';
+
+            for (let ki = 0; ki < kernelSize; ki++) {
+                let rowStr = '';
+                for (let kj = 0; kj < kernelSize; kj++) {
+                    const inputVal = inputMatrix[row + ki][col + kj];
+                    const kernelVal = kernelMatrix[ki][kj];
+                    const product = inputVal * kernelVal;
+                    sum += product;
+                    rowStr += '  ' + inputVal + '×' + (kernelVal >= 0 ? '+' : '') + kernelVal + '=' + (product >= 0 ? '+' : '') + product;
+                }
+                detailHTML += rowStr + '\n';
+            }
+
+            detailHTML += '──────────────────\n';
+            detailHTML += '输出值 = ' + sum;
+
+            document.getElementById('computationDisplay').textContent = detailHTML;
+
+            const outputIndex = row * outputSize + col;
+            if (slidingData.outputMeshes && outputIndex < slidingData.outputMeshes.length) {
+                const outputMesh = slidingData.outputMeshes[outputIndex];
+                if (!outputMesh.userData.computed) {
+                    outputMesh.userData.computed = true;
+                    outputMesh.userData.value = sum;
+                    slidingData.computedCount++;
+
+                    const maxAbs = 30;
+                    const normalizedValue = maxAbs > 0 ? (sum + maxAbs) / (2 * maxAbs) : 0.5;
+                    const clampedNorm = Math.max(0, Math.min(1, normalizedValue));
+
+                    const hue = sum >= 0 ? 0.08 + clampedNorm * 0.12 : 0.55 + (1 - clampedNorm) * 0.1;
+                    const color = new THREE.Color();
+                    color.setHSL(hue, 0.7, 0.35 + clampedNorm * 0.25);
+
+                    outputMesh.material.color = color;
+                    outputMesh.material.emissive = new THREE.Color().setHSL(hue, 0.5, 0.15);
+                    outputMesh.material.emissiveIntensity = 0.5;
+
+                    const height = 0.2 + Math.abs(sum) * 0.015;
+                    outputMesh.scale.z = Math.max(0.3, height / 0.2);
+                    outputMesh.position.z = -0.3 + (height - 0.2) / 2;
+                }
+            }
+
+            if (slidingData.computedCount >= slidingData.totalSteps) {
+                slidingCompleted = true;
+                slidingPlaying = false;
+                document.getElementById('slidingPlay').innerHTML = '<i class="fas fa-check"></i> 完成';
+                document.getElementById('computationDisplay').textContent = '卷积完成！所有输出已计算。\n点击「重置」可重新演示。';
+            }
+        }
+
+        function stepSliding(direction) {
+            if (!slidingData) return;
+            if (slidingCompleted) return;
+
+            const kg = slidingData.kernelGroup;
+            const data = kg.userData;
+
+            if (direction > 0) {
+                data.col += 1;
+                if (data.col > data.range) {
+                    data.col = 0;
+                    data.row += 1;
+                }
+                if (data.row > data.range) {
+                    data.row = 0;
+                    data.col = 0;
+                }
+            } else {
+                data.col -= 1;
+                if (data.col < 0) {
+                    data.col = data.range;
+                    data.row -= 1;
+                }
+                if (data.row < 0) {
+                    data.row = data.range;
+                    data.col = data.range;
+                }
+            }
+
+            kg.position.x = data.startX + data.col * data.step;
+            kg.position.y = data.startY - data.row * data.step;
+
+            updateSlidingComputation();
+        }
+
+        function createCNNScene() {
+            const layers = [
+                { name: '输入层', width: 4, height: 4, depth: 0.3, color: 0x3B82F6, z: -6, label: 'Input\n28×28×3', desc: '原始图像输入' },
+                { name: '卷积层1', width: 3.5, height: 3.5, depth: 0.8, color: 0xB45309, z: -3.5, label: 'Conv1\n3×3×32', desc: '提取低级特征\n边缘/纹理' },
+                { name: '池化层1', width: 2.5, height: 2.5, depth: 0.4, color: 0x059669, z: -1, label: 'Pool1\n2×2', desc: '下采样\n降维压缩' },
+                { name: '卷积层2', width: 2, height: 2, depth: 0.8, color: 0xD97706, z: 1.5, label: 'Conv2\n3×3×64', desc: '提取高级特征\n形状/部件' },
+                { name: '池化层2', width: 1.2, height: 1.2, depth: 0.4, color: 0x059669, z: 3.5, label: 'Pool2\n2×2', desc: '进一步压缩\n固定尺寸' },
+                { name: '全连接层', width: 0.6, height: 0.6, depth: 1.5, color: 0x8B5CF6, z: 5.5, label: 'FC\n10', desc: '分类输出\n10个类别' }
+            ];
+
+            layers.forEach((layer, index) => {
+                const boxGroup = createGlowBox(layer.width, layer.height, layer.depth, layer.color, 0.25);
+                boxGroup.position.z = layer.z;
+                boxGroup.userData = {
+                    layerIndex: index,
+                    baseZ: layer.z,
+                    pulseSpeed: 1 + index * 0.3,
+                    pulseAmp: 0.05
+                };
+                mainGroup.add(boxGroup);
+
+                const labelSprite = createTextSprite(layer.label, 36, '#1F2937');
+                labelSprite.position.set(0, layer.height / 2 + 1.2, layer.z);
+                labelSprite.scale.set(4, 1.4, 1);
+                mainGroup.add(labelSprite);
+
+                const descSprite = createTextSprite(layer.desc, 22, '#6B7280');
+                descSprite.position.set(0, layer.height / 2 + 0.5, layer.z);
+                descSprite.scale.set(5, 1, 1);
+                mainGroup.add(descSprite);
+
+                if (index < layers.length - 1) {
+                    const nextLayer = layers[index + 1];
+                    const fromPos = new THREE.Vector3(0, 0, layer.z + layer.depth / 2);
+                    const toPos = new THREE.Vector3(0, 0, nextLayer.z - nextLayer.depth / 2);
+                    const particleSys = createParticleTrail(fromPos, toPos, layer.color, 40);
+                    mainGroup.add(particleSys);
+
+                    const lineGeom = new THREE.BufferGeometry();
+                    const vertices = new Float32Array([
+                        -layer.width / 2, -layer.height / 2, layer.z + layer.depth / 2,
+                        -nextLayer.width / 2, -nextLayer.height / 2, nextLayer.z - nextLayer.depth / 2,
+                        layer.width / 2, -layer.height / 2, layer.z + layer.depth / 2,
+                        nextLayer.width / 2, -nextLayer.height / 2, nextLayer.z - nextLayer.depth / 2,
+                        -layer.width / 2, layer.height / 2, layer.z + layer.depth / 2,
+                        -nextLayer.width / 2, nextLayer.height / 2, nextLayer.z - nextLayer.depth / 2,
+                        layer.width / 2, layer.height / 2, layer.z + layer.depth / 2,
+                        nextLayer.width / 2, nextLayer.height / 2, nextLayer.z - nextLayer.depth / 2,
+                    ]);
+                    lineGeom.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+                    const lineMat = new THREE.LineBasicMaterial({ color: 0xD1A070, transparent: true, opacity: 0.3 });
+                    const lines = new THREE.LineSegments(lineGeom, lineMat);
+                    mainGroup.add(lines);
+                }
+            });
+
+            addGridFloor();
+        }
+
+        // ============================================
+        // 场景4：经典卷积核对比
+        // 对比边缘检测、均值模糊、锐化、浮雕四种卷积核效果
+        // ============================================
+        function createKernelsCompareScene() {
+            const preset = kernelPresetsCompare[currentKernelType];
+            const size = 3;
+            const cellSize = 1.0;
+            const spacing = 0.06;
+            const totalSize = size * (cellSize + spacing) - spacing;
+            const offset = totalSize / 2 - cellSize / 2;
+
+            updateMatrixDisplay(preset.matrix);
+
+            for (let i = 0; i < size; i++) {
+                for (let j = 0; j < size; j++) {
+                    const value = preset.matrix[i][j];
+                    const absVal = Math.abs(value);
+                    const maxAbs = 8;
+                    const normalizedValue = (value + maxAbs) / (2 * maxAbs);
+
+                    const height = 0.2 + absVal * 0.15;
+                    const geometry = new THREE.BoxGeometry(cellSize - spacing, cellSize - spacing, height);
+
+                    const hue = 0.08 + (normalizedValue * 0.15);
+                    const color = new THREE.Color();
+                    color.setHSL(hue, 0.7, 0.35 + normalizedValue * 0.25);
+
+                    const material = new THREE.MeshStandardMaterial({
+                        color: color,
+                        metalness: 0.3,
+                        roughness: 0.4,
+                        emissive: new THREE.Color().setHSL(hue, 0.5, 0.15),
+                        emissiveIntensity: 0.5
+                    });
+
+                    const mesh = new THREE.Mesh(geometry, material);
+
+                    const x = j * (cellSize + spacing) - offset;
+                    const y = -i * (cellSize + spacing) + offset;
+                    const z = value * 0.15;
+
+                    mesh.position.set(x, y, z);
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    mainGroup.add(mesh);
+
+                    const labelCanvas = document.createElement('canvas');
+                    labelCanvas.width = 128;
+                    labelCanvas.height = 128;
+                    const ctx = labelCanvas.getContext('2d');
+                    ctx.fillStyle = '#FFF';
+                    ctx.font = 'bold 48px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(value.toString(), 64, 64);
+
+                    const texture = new THREE.CanvasTexture(labelCanvas);
+                    texture.minFilter = THREE.LinearFilter;
+                    const labelGeometry = new THREE.PlaneGeometry(cellSize * 0.5, cellSize * 0.5);
+                    const labelMaterial = new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide });
+                    const label = new THREE.Mesh(labelGeometry, labelMaterial);
+                    label.position.copy(mesh.position);
+                    label.position.z += height / 2 + 0.1;
+                    mainGroup.add(label);
+                }
+            }
+
+            const titleSprite = createTextSprite(preset.name + '卷积核', 44, '#B45309');
+            titleSprite.position.set(0, totalSize / 2 + 1.5, 0);
+            titleSprite.scale.set(6, 1.3, 1);
+            mainGroup.add(titleSprite);
+
+            const descSprite = createTextSprite(preset.desc, 20, '#6B7280');
+            descSprite.position.set(0, totalSize / 2 + 0.8, 0);
+            descSprite.scale.set(7, 0.8, 1);
+            mainGroup.add(descSprite);
+
+            addGridFloor();
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = clock.getDelta();
+            const elapsed = performance.now() * 0.001;
+
+            if (autoRotate && !isLeftDragging && mainGroup) {
+                mainGroup.rotation.y += rotationSpeed;
+                mainGroup.rotation.x += rotationSpeed * 0.3;
+            }
+
+            if (currentSceneType === 'sliding' && slidingPlaying && !slidingCompleted && slidingData && mainGroup) {
+                const kg = slidingData.kernelGroup;
+                const data = kg.userData;
+
+                const prevCol = Math.floor(data.col);
+                
+                data.col += slidingSpeed * 0.015;
+                const currCol = Math.floor(data.col);
+
+                if (currCol > data.range) {
+                    data.col = 0;
+                    data.row += 1;
+                }
+                if (data.row > data.range) {
+                    slidingCompleted = true;
+                    slidingPlaying = false;
+                    document.getElementById('slidingPlay').innerHTML = '<i class="fas fa-check"></i> 完成';
+                    return;
+                }
+
+                kg.position.x = data.startX + Math.floor(data.col) * data.step;
+                kg.position.y = data.startY - data.row * data.step;
+
+                if (currCol !== prevCol || data.row !== data._lastRow) {
+                    data._lastCol = currCol;
+                    data._lastRow = data.row;
+                    updateSlidingComputation();
+                }
+            }
+
+            particleSystems.forEach(ps => {
+                const ud = ps.userData;
+                const positions = ps.geometry.attributes.position.array;
+                for (let i = 0; i < positions.length / 3; i++) {
+                    const t = i / (positions.length / 3);
+                    const waveOffset = Math.sin(elapsed * ud.speed * 3 + ud.offset + t * Math.PI * 2) * 0.15;
+                    positions[i * 3] = ud.from.x + (ud.to.x - ud.from.x) * t + (Math.random() - 0.5) * 0.3 + waveOffset;
+                    positions[i * 3 + 1] = ud.from.y + (ud.to.y - ud.from.y) * t + (Math.random() - 0.5) * 0.3;
+                    positions[i * 3 + 2] = ud.from.z + (ud.to.z - ud.from.z) * t + (Math.random() - 0.5) * 0.3;
+                }
+                ps.geometry.attributes.position.needsUpdate = true;
+            });
+
+            if (currentSceneType === 'cnn' && mainGroup) {
+                mainGroup.children.forEach(child => {
+                    if (child.userData && child.userData.pulseSpeed) {
+                        const pulse = Math.sin(elapsed * child.userData.pulseSpeed) * child.userData.pulseAmp;
+                        child.position.z = child.userData.baseZ + pulse;
+                    }
+                });
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function setupControls() {
+            document.querySelectorAll('.scene-option').forEach(opt => {
+                opt.addEventListener('click', () => {
+                    switchScene(opt.dataset.scene);
+                });
+            });
+
+            document.getElementById('kernelSize').addEventListener('change', (e) => {
+                const size = parseInt(e.target.value);
+                document.getElementById('kernelSizeValue').textContent = size;
+                if (currentSceneType === 'kernel') {
+                    switchScene('kernel');
+                }
+            });
+
+            document.getElementById('brightness').addEventListener('input', (e) => {
+                currentBrightness = parseFloat(e.target.value);
+                document.getElementById('brightnessValue').textContent = currentBrightness.toFixed(1);
+                const ambientLight = scene.getObjectByName('ambientLight');
+                const directionalLight = scene.getObjectByName('directionalLight');
+                if (ambientLight) ambientLight.intensity = 0.6 * currentBrightness;
+                if (directionalLight) directionalLight.intensity = 0.8 * currentBrightness;
+            });
+
+            document.getElementById('rotationSpeed').addEventListener('input', (e) => {
+                rotationSpeed = parseFloat(e.target.value);
+                document.getElementById('rotationSpeedValue').textContent = rotationSpeed.toFixed(3);
+            });
+
+            document.getElementById('autoRotateBtn').addEventListener('click', function(e) {
+                autoRotate = !autoRotate;
+                this.innerHTML = autoRotate
+                    ? '<i class="fas fa-pause"></i><span>停止自动旋转</span>'
+                    : '<i class="fas fa-sync"></i><span>启用自动旋转</span>';
+            });
+
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                camera.position.set(8, 5, 10);
+                camera.lookAt(0, 0, 0);
+                if (mainGroup) {
+                    mainGroup.rotation.set(0, 0, 0);
+                    mainGroup.position.set(0, 0, 0);
+                }
+                autoRotate = false;
+                document.getElementById('autoRotateBtn').innerHTML = '<i class="fas fa-sync"></i><span>启用自动旋转</span>';
+            });
+
+            const presetButtons = {
+                sobelX: document.getElementById('presetSobelX'),
+                sobelY: document.getElementById('presetSobelY'),
+                laplacian: document.getElementById('presetLaplacian'),
+                gaussian: document.getElementById('presetGaussian')
+            };
+
+            Object.entries(presetButtons).forEach(([type, btn]) => {
+                if (btn) {
+                    btn.addEventListener('click', () => {
+                        currentPreset = type;
+                        Object.values(presetButtons).forEach(b => {
+                            if (b) b.classList.remove('active');
+                        });
+                        btn.classList.add('active');
+                        if (currentSceneType === 'kernel') {
+                            switchScene('kernel');
+                        }
+                    });
+                }
+            });
+
+            const kernelTypeButtons = {
+                edge: document.getElementById('kernelEdge'),
+                blur: document.getElementById('kernelBlur'),
+                sharpen: document.getElementById('kernelSharpen'),
+                emboss: document.getElementById('kernelEmboss')
+            };
+
+            Object.entries(kernelTypeButtons).forEach(([type, btn]) => {
+                if (btn) {
+                    btn.addEventListener('click', () => {
+                        currentKernelType = type;
+                        Object.values(kernelTypeButtons).forEach(b => {
+                            if (b) b.classList.remove('active');
+                        });
+                        btn.classList.add('active');
+                        if (currentSceneType === 'kernels') {
+                            switchScene('kernels');
+                        }
+                    });
+                }
+            });
+
+            const slidingPlayBtn = document.getElementById('slidingPlay');
+            if (slidingPlayBtn) {
+                slidingPlayBtn.addEventListener('click', function() {
+                    if (slidingCompleted) {
+                        switchScene('sliding');
+                        return;
+                    }
+                    slidingPlaying = !slidingPlaying;
+                    this.innerHTML = slidingPlaying
+                        ? '<i class="fas fa-pause"></i> 暂停'
+                        : '<i class="fas fa-play"></i> 播放';
+                });
+            }
+
+            const slidingStepBackBtn = document.getElementById('slidingStepBack');
+            if (slidingStepBackBtn) {
+                slidingStepBackBtn.addEventListener('click', () => stepSliding(-1));
+            }
+
+            const slidingStepFwdBtn = document.getElementById('slidingStepFwd');
+            if (slidingStepFwdBtn) {
+                slidingStepFwdBtn.addEventListener('click', () => stepSliding(1));
+            }
+
+            const slidingSpeedInput = document.getElementById('slidingSpeed');
+            if (slidingSpeedInput) {
+                slidingSpeedInput.addEventListener('input', (e) => {
+                    slidingSpeed = parseFloat(e.target.value);
+                    document.getElementById('slidingSpeedValue').textContent = slidingSpeed.toFixed(1);
+                });
+            }
+
+            const slidingKernelButtons = {
+                edge: document.getElementById('slidingKernelEdge'),
+                blur: document.getElementById('slidingKernelBlur'),
+                sharpen: document.getElementById('slidingKernelSharpen'),
+                emboss: document.getElementById('slidingKernelEmboss')
+            };
+
+            Object.entries(slidingKernelButtons).forEach(([type, btn]) => {
+                if (btn) {
+                    btn.addEventListener('click', () => {
+                        slidingKernelType = type;
+                        Object.values(slidingKernelButtons).forEach(b => {
+                            if (b) b.classList.remove('active');
+                        });
+                        btn.classList.add('active');
+                        if (currentSceneType === 'sliding') {
+                            switchScene('sliding');
+                        }
+                    });
+                }
+            });
+
+            const slidingResetBtn = document.getElementById('slidingReset');
+            if (slidingResetBtn) {
+                slidingResetBtn.addEventListener('click', () => {
+                    if (currentSceneType === 'sliding') {
+                        switchScene('sliding');
+                    }
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initThreeJS();
+            setupControls();
+        });
+    </script>
+</body>
+</html>
