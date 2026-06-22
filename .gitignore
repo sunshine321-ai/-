@@ -6,6 +6,14 @@ node_modules/
 frontend/node_modules/
 dist/
 *.log
+/package-lock.json
+.vscode/
+storage/screenshots/*
+storage/exports/*
+java-backend/microcourse-backend/storage/
+screenshots/current-*.png
+!storage/screenshots/.gitkeep
+!storage/exports/.gitkeep
 
 # Python
 __pycache__/
