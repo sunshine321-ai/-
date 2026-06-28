@@ -16,7 +16,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Result<Void> badRequest(IllegalArgumentException exception) {
-        return Result.error(exception.getMessage());
+        return Result.error(HttpStatus.BAD_REQUEST.value(), exception.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -25,19 +25,19 @@ public class GlobalExceptionHandler {
         String message = exception.getBindingResult().getFieldErrors().isEmpty()
                 ? "请求参数不正确"
                 : exception.getBindingResult().getFieldErrors().getFirst().getDefaultMessage();
-        return Result.error(message);
+        return Result.error(HttpStatus.BAD_REQUEST.value(), message);
     }
 
     @ExceptionHandler(IllegalStateException.class)
     @ResponseStatus(HttpStatus.BAD_GATEWAY)
     public Result<Void> serviceError(IllegalStateException exception) {
-        return Result.error(exception.getMessage());
+        return Result.error(HttpStatus.BAD_GATEWAY.value(), exception.getMessage());
     }
 
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Result<Void> unexpectedError(Exception exception) {
         LOGGER.error("Unhandled server exception", exception);
-        return Result.error("服务器内部错误");
+        return Result.error(HttpStatus.INTERNAL_SERVER_ERROR.value(), "服务器内部错误");
     }
 }

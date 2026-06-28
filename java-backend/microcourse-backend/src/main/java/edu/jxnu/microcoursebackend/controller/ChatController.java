@@ -1,10 +1,8 @@
 package edu.jxnu.microcoursebackend.controller;
 
 import edu.jxnu.microcoursebackend.pojo.ChatMessage;
-import edu.jxnu.microcoursebackend.pojo.ChatSyncRequest;
 import edu.jxnu.microcoursebackend.pojo.Result;
 import edu.jxnu.microcoursebackend.service.ChatMessageService;
-import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,12 +18,6 @@ public class ChatController {
     @GetMapping("/{context}")
     public Result<List<ChatMessage>> list(@PathVariable String context) {
         return Result.success(service.list(USER_ID, context));
-    }
-
-    @PutMapping
-    public Result<Void> sync(@Valid @RequestBody ChatSyncRequest request) {
-        service.sync(USER_ID, request.context(), request.messages());
-        return Result.success();
     }
 
     @DeleteMapping("/{context}")

@@ -2,10 +2,8 @@ package edu.jxnu.microcoursebackend.service.impl;
 
 import edu.jxnu.microcoursebackend.mapper.ChatMessageMapper;
 import edu.jxnu.microcoursebackend.pojo.ChatMessage;
-import edu.jxnu.microcoursebackend.pojo.ChatSyncRequest;
 import edu.jxnu.microcoursebackend.service.ChatMessageService;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Set;
@@ -31,13 +29,6 @@ public class ChatMessageServiceImpl implements ChatMessageService {
     public List<ChatMessage> list(Long userId, String context) {
         validateContext(context);
         return mapper.findByContext(userId, context);
-    }
-
-    @Transactional
-    public void sync(Long userId, String context, List<ChatSyncRequest.Message> messages) {
-        validateContext(context);
-        mapper.deleteByContext(userId, context);
-        messages.forEach(message -> append(userId, context, message.role(), message.content()));
     }
 
     public ChatMessage append(Long userId, String context, String role, String content) {

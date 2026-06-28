@@ -2005,6 +2005,9 @@
             <div class="panel-header">
                 <h3><i class="fa-solid fa-robot"></i> AI 学习助手</h3>
                 <div class="panel-actions">
+                    <button class="panel-action-btn" onclick="shuffleFlashcards()" title="随机顺序">
+                        <i class="fa-solid fa-shuffle"></i>
+                    </button>
                     <button type="button" onclick="clearStudyChat()" title="清空数据库中的课后学习对话">
                         <i class="fa-solid fa-trash-can"></i> 清空
                     </button>
@@ -3740,7 +3743,7 @@
                         body: JSON.stringify(payload)
                     });
                     const result = await response.json();
-                    if (!response.ok || !result.success) throw new Error(result.msg || '学习进度保存失败');
+                    if (!response.ok || result.code !== 200) throw new Error(result.msg || '学习进度保存失败');
                 }));
                 lastProgressSignature = signature;
             } catch (error) {
@@ -3789,7 +3792,7 @@
             try {
                 const response = await fetch('/api/v1/progress');
                 const result = await response.json();
-                if (!response.ok || !result.success) throw new Error(result.msg || '学习进度加载失败');
+                if (!response.ok || result.code !== 200) throw new Error(result.msg || '学习进度加载失败');
 
                 progressBackendAvailable = true;
                 if (Array.isArray(result.data) && result.data.length > 0) {
@@ -3828,7 +3831,7 @@
                 try {
                     const response = await fetch('/api/v1/progress', { method: 'DELETE' });
                     const result = await response.json();
-                    if (!response.ok || !result.success) throw new Error(result.msg || '数据库进度重置失败');
+                    if (!response.ok || result.code !== 200) throw new Error(result.msg || '数据库进度重置失败');
                     lastProgressSignature = '';
                 } catch (error) {
                     console.error('数据库进度重置失败：', error);
@@ -5005,10 +5008,18 @@
                         signal: AbortSignal.timeout(20000) // 20秒超时
                     });
                     const data = await resp.json();
-                    if (!resp.ok || data.success === false) {
+                    if (!resp.ok || data.code !== 200) {
                         throw new Error(data.msg || data.error || `AI 请求失败（HTTP ${resp.status}）`);
                     }
-                    return data.content || data.error || '暂无回复';
+                    const payload = data.data;
+                    if (typeof payload === 'string') return payload;
+                    return payload?.message
+                        || payload?.content
+                        || data.message
+                        || data.content
+                        || data.answer
+                        || data.error
+                        || '暂无回复';
                 } catch(e) {
                     // 如果是最后一次重试，返回错误
                     if (i === retries - 1) {
@@ -5526,11 +5537,24 @@
         let fcCurrent = 0;     // 当前在 fcQueue 中的位置
         let fcFlipped = false; // 是否已翻转
 
+        function shuffleArray(items) {
+            const shuffled = items.slice();
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        function buildFlashcardQueue() {
+            return shuffleArray(FLASHCARDS.map((_, i) => i).filter(i => !fcMastered.includes(i)));
+        }
+
         async function initFlashcards() {
             try {
                 const response = await fetch('/api/v1/flashcards');
                 const result = await response.json();
-                if (!response.ok || !result.success) throw new Error(result.msg || '闪卡进度读取失败');
+                if (!response.ok || result.code !== 200) throw new Error(result.msg || '闪卡进度读取失败');
                 fcMastered = Array.isArray(result.data)
                     ? result.data.filter(index => Number.isInteger(index) && index >= 0 && index < FLASHCARDS.length)
                     : [];
@@ -5538,7 +5562,7 @@
                 fcMastered = [];
                 alert('无法从数据库读取闪卡进度：' + error.message);
             }
-            fcQueue = FLASHCARDS.map((_, i) => i).filter(i => !fcMastered.includes(i));
+            fcQueue = buildFlashcardQueue();
             fcCurrent = 0;
             fcFlipped = false;
             renderFlashcard();
@@ -5599,7 +5623,7 @@
                 try {
                     const response = await fetch(`/api/v1/flashcards/${idx}`, { method: 'PUT' });
                     const result = await response.json();
-                    if (!response.ok || !result.success) throw new Error(result.msg || '闪卡进度保存失败');
+                    if (!response.ok || result.code !== 200) throw new Error(result.msg || '闪卡进度保存失败');
                 } catch (error) {
                     alert('无法保存闪卡进度：' + error.message);
                     return;
@@ -5629,13 +5653,21 @@
             renderFlashcard();
         }
 
+        function shuffleFlashcards() {
+            if (fcQueue.length <= 1) return;
+            fcQueue = shuffleArray(fcQueue);
+            fcCurrent = 0;
+            fcFlipped = false;
+            renderFlashcard();
+        }
+
         async function resetFlashcards() {
             try {
                 const response = await fetch('/api/v1/flashcards', { method: 'DELETE' });
                 const result = await response.json();
-                if (!response.ok || !result.success) throw new Error(result.msg || '闪卡进度重置失败');
+                if (!response.ok || result.code !== 200) throw new Error(result.msg || '闪卡进度重置失败');
                 fcMastered = [];
-                fcQueue = FLASHCARDS.map((_, index) => index);
+                fcQueue = shuffleArray(FLASHCARDS.map((_, index) => index));
                 fcCurrent = 0;
                 fcFlipped = false;
                 renderFlashcard();
@@ -5665,7 +5697,7 @@
             try {
                 const response = await fetch('/api/v1/wrong-questions');
                 const result = await response.json();
-                if (!response.ok || !result.success) throw new Error(result.msg || '读取错题失败');
+                if (!response.ok || result.code !== 200) throw new Error(result.msg || '读取错题失败');
                 wrongQuestions = (result.data || []).map(toWrongQuestionView);
                 renderWrongQuestions();
             } catch (error) {
@@ -5789,7 +5821,7 @@
                     await Promise.all(retryCorrectIds.map(async id => {
                         const response = await fetch(`/api/v1/wrong-questions/${id}`, { method: 'DELETE' });
                         const result = await response.json();
-                        if (!response.ok || !result.success) throw new Error(result.msg || '错题删除失败');
+                        if (!response.ok || result.code !== 200) throw new Error(result.msg || '错题删除失败');
                     }));
                     wrongQuestions = wrongQuestions.filter(q => !retryCorrectIds.includes(q.id));
                     renderWrongQuestions();
@@ -5835,7 +5867,7 @@
             try {
                 const response = await fetch('/api/v1/achievements');
                 const result = await response.json();
-                if (!response.ok || !result.success) throw new Error(result.msg || '成就读取失败');
+                if (!response.ok || result.code !== 200) throw new Error(result.msg || '成就读取失败');
                 applyAchievementRows(result.data);
                 return true;
             } catch (error) {
@@ -5853,7 +5885,7 @@
                 const previous = { ...badges };
                 const response = await fetch(`/api/v1/achievements/${encodeURIComponent(id)}`, { method: 'PUT' });
                 const result = await response.json();
-                if (!response.ok || !result.success) throw new Error(result.msg || '成就保存失败');
+                if (!response.ok || result.code !== 200) throw new Error(result.msg || '成就保存失败');
                 applyAchievementRows(result.data);
                 const def = BADGE_DEFS.find(item => item.id === id);
                 if (def && !previous[id] && badges[id]) showBadgePopup(def);
@@ -6300,7 +6332,7 @@
             try {
                 const response = await fetch('/api/v1/chats/study');
                 const result = await response.json();
-                if (!response.ok || !result.success) throw new Error(result.msg || '聊天记录加载失败');
+                if (!response.ok || result.code !== 200) throw new Error(result.msg || '聊天记录加载失败');
 
                 aiChatHistory = Array.isArray(result.data)
                     ? result.data.map(({ role, content }) => ({ role, content }))
@@ -6326,7 +6358,7 @@
             try {
                 const response = await fetch('/api/v1/chats/study', { method: 'DELETE' });
                 const result = await response.json();
-                if (!response.ok || !result.success) throw new Error(result.msg || '清空失败');
+                if (!response.ok || result.code !== 200) throw new Error(result.msg || '清空失败');
                 aiChatHistory = [];
                 document.getElementById('chatMessages').innerHTML = '';
                 showStudyChatGreeting();
@@ -6396,7 +6428,7 @@
             try {
                 const response = await fetch('/api/v1/wrong-questions');
                 const result = await response.json();
-                if (!response.ok || !result.success) throw new Error(result.msg || '读取错题失败');
+                if (!response.ok || result.code !== 200) throw new Error(result.msg || '读取错题失败');
                 wrongQuestions = (result.data || []).map(toWrongQuestionView);
                 renderWrongQuestions();
             } catch (error) {
@@ -6427,7 +6459,7 @@
                     })
                 });
                 const result = await response.json();
-                if (!response.ok || !result.success) throw new Error(result.msg || '新增错题失败');
+                if (!response.ok || result.code !== 200) throw new Error(result.msg || '新增错题失败');
                 wrongQuestions.push(toWrongQuestionView(result.data));
                 renderWrongQuestions();
                 alert('已成功加入错题本！');
@@ -6483,7 +6515,7 @@
                 try {
                     const response = await fetch(`/api/v1/wrong-questions/${id}`, { method: 'DELETE' });
                     const result = await response.json();
-                    if (!response.ok || !result.success) throw new Error(result.msg || '删除错题失败');
+                    if (!response.ok || result.code !== 200) throw new Error(result.msg || '删除错题失败');
                     wrongQuestions = wrongQuestions.filter(q => q.id !== id);
                     renderWrongQuestions();
                 } catch (error) {
@@ -6501,7 +6533,7 @@
                 try {
                     const response = await fetch('/api/v1/wrong-questions', { method: 'DELETE' });
                     const result = await response.json();
-                    if (!response.ok || !result.success) throw new Error(result.msg || '清空错题失败');
+                    if (!response.ok || result.code !== 200) throw new Error(result.msg || '清空错题失败');
                     wrongQuestions = [];
                     renderWrongQuestions();
                 } catch (error) {

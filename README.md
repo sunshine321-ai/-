@@ -1,67 +1,74 @@
 # 卷积核微课平台
 
-项目采用严格的前后端分离结构：Vue 负责所有页面，FastAPI 只提供 API。后续可以在 IDEA 中用 Spring Boot 实现相同的 API，并直接替换 Python 后端。
+这是一个面向卷积核与卷积神经网络入门学习的微课平台，采用前后端分离架构：
 
-## 目录
+- 前端：Vue 3 + Vite，包含微课观看、截图笔记、AI 助教、课后学习、实验工具、数据可视化等页面。
+- 后端：Spring Boot + MyBatis，提供学习进度、截图笔记、错题本、书签、闪卡、成就和 AI 调用接口。
+- 数据库：MySQL，使用 Flyway 管理表结构。
+- AI：DashScope/通义千问，用于智能问答、截图分析、主观题评价和视频章节识别。
+
+## 目录结构
 
 ```text
-frontend/                 Vue 3 + JavaScript 前端
-  public/                 视频及暂未组件化的旧 HTML 页面
-  src/views/              路由页面
-  src/components/         公共组件
-  src/api/                按业务拆分的后端接口
-backend/                  纯 Python 后端
-  routers/                HTTP 接口
-  services/               AI、导出等业务逻辑
-  database.py             MySQL 数据访问
-  app.py                  FastAPI 应用装配
-storage/                  后端运行时生成的截图和导出文件
-main.py                   Python 后端启动入口
-docs/                     架构及 API 契约
+frontend/                              Vue 前端
+  public/media/                        微课视频和章节识别结果
+  public/legacy/                       课后学习旧版 HTML 页面
+  public/pages/                        拓展实验页面
+  src/api/                             前端接口封装
+  src/views/                           Vue 路由页面
+
+java-backend/microcourse-backend/      Spring Boot 后端
+  src/main/java/.../controller/         HTTP 接口
+  src/main/java/.../service/            业务接口
+  src/main/java/.../service/impl/       业务实现
+  src/main/java/.../mapper/             MyBatis 数据访问
+  src/main/resources/db/migration/      Flyway 数据库迁移
+
+docs/                                  答辩材料和接口说明
 ```
 
-## 启动
+## 启动方式
 
-首次安装：
+后端：
 
 ```powershell
-pip install -r requirements.txt
+cd java-backend/microcourse-backend
+.\mvnw.cmd spring-boot:run
+```
+
+前端：
+
+```powershell
 cd frontend
 npm install
-```
-
-终端一，在项目根目录启动后端：
-
-```powershell
-python main.py
-```
-
-终端二，启动前端：
-
-```powershell
-cd frontend
 npm run dev
 ```
 
 访问地址：
 
 - 前端：http://localhost:5173
-- API 文档：http://localhost:8000/docs
-- 健康检查：http://localhost:8000/api/v1/health
+- 后端健康检查：http://localhost:8000/api/v1/health
 
 ## 环境变量
 
-`.env` 示例：
+项目根目录的 `.env` 用于本地配置，包含数据库和 AI 密钥。不要提交到 GitHub。
 
 ```dotenv
 DASHSCOPE_API_KEY=你的密钥
+DASHSCOPE_CHAT_URL=https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
 QWEN_MODEL=qwen-plus
-MYSQL_HOST=localhost
-MYSQL_PORT=3306
+QWEN_VISION_MODEL=qwen-vl-plus
+
+MYSQL_URL=jdbc:mysql://localhost:3306/microcourse?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
 MYSQL_USER=root
-MYSQL_PASSWORD=你的密码
-MYSQL_DB=vlab
-ALLOWED_ORIGINS=http://localhost:5173
+MYSQL_PASSWORD=123456
 ```
 
-详细边界见 [架构说明](docs/ARCHITECTURE.md)，Java 重写时遵循 [API 契约](docs/API_CONTRACT.md)。
+## 运行时文件
+
+- 截图笔记图片保存在 `storage/screenshots` 或后端启动目录下的 `storage/screenshots`。
+- 数据库只保存截图图片路径和笔记内容。
+- 浏览器本地导出的 Word/PDF 不经过后端保存。
+- 视频章节识别会使用浏览器抽帧，并调用后端 AI 接口生成章节目录。
+
+更多接口说明见 (API_CONTRACT.md)，架构说明见 (ARCHITECTURE.md)。

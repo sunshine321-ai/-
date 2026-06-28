@@ -12,7 +12,8 @@ public class WebConfig implements WebMvcConfigurer {
     private final String storageLocation;
 
     public WebConfig(@Value("${app.storage.root:storage}") String storageRoot) {
-        this.storageLocation = Path.of(storageRoot).toAbsolutePath().normalize().toUri().toString();
+        String location = Path.of(storageRoot).toAbsolutePath().normalize().toUri().toString();
+        this.storageLocation = location.endsWith("/") ? location : location + "/";
     }
 
     @Override
@@ -21,3 +22,4 @@ public class WebConfig implements WebMvcConfigurer {
                 .addResourceLocations(storageLocation);
     }
 }
+
