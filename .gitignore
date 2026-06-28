@@ -10,6 +10,7 @@ dist/
 .vscode/
 .idea/
 *.err
+*.bak
 storage/screenshots/*
 storage/exports/*
 java-backend/microcourse-backend/storage/
