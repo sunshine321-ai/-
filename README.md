@@ -24,7 +24,6 @@ java-backend/microcourse-backend/      Spring Boot 后端
   src/main/java/.../mapper/             MyBatis 数据访问
   src/main/resources/db/migration/      Flyway 数据库迁移
 
-docs/                                  答辩材料和接口说明
 ```
 
 ## 启动方式
