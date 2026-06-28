@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { computed, ref, onMounted, onUnmounted, nextTick } from 'vue'
 import {
   analyzeScreenshot,
   createScreenshot,
@@ -7,7 +7,7 @@ import {
   getScreenshots,
   updateScreenshot,
 } from '@/api/screenshot'
-import { askAi } from '@/api/ai'
+import { analyzeVideoChapters, askAi } from '@/api/ai'
 import { clearChatMessages, getChatMessages } from '@/api/chat'
 import { clearBookmarks, createBookmark, deleteBookmark, getBookmarks } from '@/api/bookmark'
 import { getLearningProgress } from '@/api/progress'
@@ -31,9 +31,18 @@ const chatContainer = ref()
 
 // Video
 const videoRef = ref()
+const videoFileInput = ref()
+const videoSource = ref('/media/convolution-kernel.mp4')
+const videoTitle = ref('卷积运算过程')
 const chapterPanelOpen = ref(false)
 const bookmarks = ref([])
+const videoCurrentTime = ref(0)
+const videoDuration = ref(0)
+const chapterAnalyzing = ref(false)
+const chapterAnalyzeStatus = ref('')
+const pendingVideoAutoAnalyze = ref(false)
 let videoUsageStartedAt = null
+let uploadedVideoUrl = null
 const dashboardRecords = ref({ chats: [], progress: [], wrongQuestions: [], studyNote: null })
 const DASHBOARD_CHAT_CONTEXTS = [
   'home', 'tutor', 'study', 'study_hint', 'study_correction', 'study_evaluation', 'study_summary',
@@ -42,15 +51,17 @@ const DASHBOARD_CHAT_CONTEXTS = [
 // Screenshot
 const screenshotCanvas = ref()
 const modalImage = ref('')
+const recognizedChapters = ref([])
+const chapterRecognitionSource = ref('template')
 
 // Chapters
-const CHAPTERS = [
-  { time: 0, label: '开篇引入：AI如何看图？', icon: '🎬' },
-  { time: 60, label: '像素与灰度值的概念', icon: '🔢' },
-  { time: 150, label: '卷积核是什么', icon: '🧮' },
-  { time: 260, label: '水平边缘检测演示', icon: '↔️' },
-  { time: 370, label: '多种卷积核对比', icon: '🔍' },
-  { time: 480, label: '卷积核在 CNN 中的作用', icon: '🧠' },
+const CHAPTER_TEMPLATES = [
+  { ratio: 0, fallbackTime: 0, label: '开篇引入：AI如何看图？', icon: '🎬' },
+  { ratio: 0.13, fallbackTime: 60, label: '像素与灰度值的概念', icon: '🔢' },
+  { ratio: 0.31, fallbackTime: 150, label: '卷积核是什么', icon: '🧮' },
+  { ratio: 0.54, fallbackTime: 260, label: '水平边缘检测演示', icon: '↔️' },
+  { ratio: 0.77, fallbackTime: 370, label: '多种卷积核对比', icon: '🔍' },
+  { ratio: 1, fallbackTime: 480, label: '卷积核在 CNN 中的作用', icon: '🧠' },
 ]
 
 function fmtTime(s) {
@@ -59,6 +70,142 @@ function fmtTime(s) {
 
 function jumpToTime(t) {
   if (videoRef.value) { videoRef.value.currentTime = t; videoRef.value.play() }
+}
+
+function handleVideoMetadata() {
+  const duration = Number(videoRef.value?.duration || 0)
+  videoDuration.value = Number.isFinite(duration) ? duration : 0
+  if (pendingVideoAutoAnalyze.value) {
+    pendingVideoAutoAnalyze.value = false
+    analyzeCurrentVideoChapters()
+  }
+}
+
+function handleVideoTimeUpdate() {
+  videoCurrentTime.value = Number(videoRef.value?.currentTime || 0)
+}
+
+async function loadRecognizedChapters() {
+  try {
+    const response = await fetch('/media/convolution-kernel.chapters.json', { cache: 'no-cache' })
+    if (!response.ok) return
+    const data = await response.json()
+    const chapters = Array.isArray(data.chapters) ? data.chapters : []
+    if (chapters.length === 0) return
+    recognizedChapters.value = chapters
+    chapterRecognitionSource.value = data.recognition || 'content'
+  } catch (error) {
+    console.warn('读取视频识别章节失败，使用默认章节模板', error)
+  }
+}
+
+function chooseVideoFile() {
+  videoFileInput.value?.click()
+}
+
+async function handleVideoFileChange(event) {
+  const file = event.target.files?.[0]
+  if (!file) return
+  if (!file.type.startsWith('video/')) {
+    alert('请选择视频文件')
+    return
+  }
+  if (uploadedVideoUrl) URL.revokeObjectURL(uploadedVideoUrl)
+  uploadedVideoUrl = URL.createObjectURL(file)
+  videoSource.value = uploadedVideoUrl
+  videoTitle.value = file.name.replace(/\.[^.]+$/, '')
+  recognizedChapters.value = []
+  chapterRecognitionSource.value = 'template'
+  chapterAnalyzeStatus.value = '视频已上传，正在读取时长...'
+  pendingVideoAutoAnalyze.value = true
+  chapterPanelOpen.value = true
+  await nextTick()
+  videoRef.value?.load()
+  event.target.value = ''
+}
+
+async function analyzeCurrentVideoChapters() {
+  const video = videoRef.value
+  if (!video || !video.duration || Number.isNaN(video.duration)) {
+    alert('请先等待视频加载完成')
+    return
+  }
+  chapterAnalyzing.value = true
+  chapterAnalyzeStatus.value = '正在抽取关键帧...'
+  try {
+    const frames = await extractVideoFrames(video)
+    chapterAnalyzeStatus.value = 'AI 正在识别章节...'
+    const result = await analyzeVideoChapters(videoTitle.value, Math.round(video.duration), frames)
+    if (!result.success) throw new Error(result.error || 'AI 识别章节失败')
+    const chapters = parseAiChapterResult(result.data)
+    if (chapters.length === 0) throw new Error('AI 没有返回有效章节')
+    recognizedChapters.value = chapters
+    chapterRecognitionSource.value = 'ai-vision'
+    chapterAnalyzeStatus.value = `已生成 ${chapters.length} 个章节`
+    chapterPanelOpen.value = true
+  } catch (error) {
+    chapterAnalyzeStatus.value = `识别失败：${error.message}`
+  } finally {
+    chapterAnalyzing.value = false
+  }
+}
+
+async function extractVideoFrames(video) {
+  const duration = Math.floor(video.duration)
+  const count = Math.min(12, Math.max(6, Math.ceil(duration / 75)))
+  const times = Array.from({ length: count }, (_, index) => {
+    if (index === 0) return 0
+    return Math.min(duration - 1, Math.round((duration * index) / (count - 1)))
+  })
+  const wasPaused = video.paused
+  const originalTime = video.currentTime
+  video.pause()
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  const frames = []
+  for (const time of times) {
+    chapterAnalyzeStatus.value = `正在抽取 ${fmtTime(time)} 画面...`
+    await seekVideo(video, time)
+    const width = Math.min(640, video.videoWidth || 640)
+    const ratio = width / (video.videoWidth || width)
+    canvas.width = width
+    canvas.height = Math.round((video.videoHeight || 360) * ratio)
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    frames.push({ time, image: canvas.toDataURL('image/jpeg', 0.72) })
+  }
+  await seekVideo(video, originalTime)
+  if (!wasPaused) video.play()
+  return frames
+}
+
+function seekVideo(video, time) {
+  return new Promise((resolve, reject) => {
+    const done = () => {
+      video.removeEventListener('seeked', done)
+      resolve()
+    }
+    video.addEventListener('seeked', done, { once: true })
+    video.currentTime = Math.max(0, Math.min(time, video.duration || time))
+    setTimeout(() => {
+      video.removeEventListener('seeked', done)
+      resolve()
+    }, 2500)
+  })
+}
+
+function parseAiChapterResult(value) {
+  const text = typeof value === 'string' ? value : JSON.stringify(value)
+  const cleaned = text.replace(/```json|```/g, '').trim()
+  const data = JSON.parse(cleaned)
+  const chapters = Array.isArray(data.chapters) ? data.chapters : []
+  return chapters
+    .map((item) => ({
+      time: Math.max(0, Math.round(Number(item.time || 0))),
+      label: String(item.label || '未命名章节').trim(),
+      icon: item.icon || '📌',
+    }))
+    .filter((item) => item.label)
+    .sort((a, b) => a.time - b.time)
 }
 
 function startVideoUsage() {
@@ -125,7 +272,35 @@ async function removeAllBookmarks() {
   }
 }
 
-const allChapters = CHAPTERS
+const allChapters = computed(() => {
+  const duration = videoDuration.value
+  const source = recognizedChapters.value.length ? recognizedChapters.value : CHAPTER_TEMPLATES
+  return source.map((chapter) => ({
+    ...chapter,
+    time: resolveChapterTime(chapter, duration),
+  })).sort((a, b) => a.time - b.time)
+})
+
+function resolveChapterTime(chapter, duration) {
+  if (Number.isFinite(Number(chapter.time))) return Math.max(0, Number(chapter.time))
+  if (duration > 0 && Number.isFinite(Number(chapter.ratio))) {
+    return Math.min(duration, Math.round(duration * Number(chapter.ratio)))
+  }
+  return Number(chapter.fallbackTime || 0)
+}
+
+const currentChapter = computed(() => {
+  const chapters = allChapters.value
+  let active = chapters[0]
+  for (const chapter of chapters) {
+    if (videoCurrentTime.value >= chapter.time) active = chapter
+  }
+  return active
+})
+
+function isCurrentChapter(chapter) {
+  return currentChapter.value?.label === chapter.label
+}
 
 // Sidebar
 function toggleSidebar() {
@@ -417,6 +592,7 @@ function renderDashboard() {
 }
 
 onMounted(() => {
+  loadRecognizedChapters()
   loadScreenshotData()
   loadHomeChat()
   loadBookmarkData()
@@ -426,6 +602,7 @@ onMounted(() => {
 onUnmounted(() => {
   flushVideoUsage()
   document.removeEventListener('visibilitychange', handleVideoVisibility)
+  if (uploadedVideoUrl) URL.revokeObjectURL(uploadedVideoUrl)
 })
 </script>
 
@@ -493,13 +670,33 @@ onUnmounted(() => {
           @play="startVideoUsage"
           @pause="flushVideoUsage"
           @ended="flushVideoUsage"
+          @loadedmetadata="handleVideoMetadata"
+          @timeupdate="handleVideoTimeUpdate"
         >
-          <source src="/media/DougongGrowth.mp4" type="video/mp4">
+          <source :src="videoSource" type="video/mp4">
         </video>
       </div>
       <div class="video-actions">
         <p><i class="fas fa-lightbulb"></i> 提示：遇到重点知识，可以随时截取画面并记录笔记</p>
         <div class="video-btns">
+          <input
+            ref="videoFileInput"
+            type="file"
+            accept="video/*"
+            style="display:none"
+            @change="handleVideoFileChange"
+          >
+          <button class="btn-screenshot" type="button" @click="chooseVideoFile">
+            <i class="fas fa-upload"></i> 上传视频
+          </button>
+          <button
+            class="btn-screenshot"
+            type="button"
+            :disabled="chapterAnalyzing"
+            @click="analyzeCurrentVideoChapters"
+          >
+            <i class="fas fa-wand-magic-sparkles"></i> {{ chapterAnalyzing ? '识别中...' : 'AI识别章节' }}
+          </button>
           <button class="btn-screenshot" @click="chapterPanelOpen = !chapterPanelOpen">
             <i class="fas fa-list"></i> 章节目录
           </button>
@@ -512,6 +709,8 @@ onUnmounted(() => {
         </div>
       </div>
 
+      <div v-if="chapterAnalyzeStatus" class="chapter-status">{{ chapterAnalyzeStatus }}</div>
+
       <!-- Chapter Panel -->
       <div v-if="chapterPanelOpen" class="chapter-panel">
         <div class="chapter-header">
@@ -521,7 +720,7 @@ onUnmounted(() => {
           <div
             v-for="item in allChapters"
             :key="item.time + item.label"
-            class="chapter-item"
+            :class="['chapter-item', { active: isCurrentChapter(item) }]"
             @click="jumpToTime(item.time)"
           >
             <span class="chapter-icon">{{ item.icon }}</span>
@@ -813,7 +1012,9 @@ onUnmounted(() => {
   cursor: pointer; transition: all 0.3s ease;
 }
 .btn-screenshot:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(180, 83, 9, 0.30); }
+.btn-screenshot:disabled { opacity: 0.65; cursor: wait; transform: none; box-shadow: none; }
 .bookmark-btn { background: linear-gradient(135deg, var(--c-mint), var(--c-violet)); }
+.chapter-status { margin-top: 10px; color: var(--text-muted); font-size: 0.85rem; }
 
 /* Chapter Panel */
 .chapter-panel {
@@ -836,6 +1037,7 @@ onUnmounted(() => {
   border-radius: 8px; cursor: pointer; transition: 0.15s;
 }
 .chapter-item:hover { background: rgba(217, 119, 6, 0.10); }
+.chapter-item.active { background: rgba(217, 119, 6, 0.16); }
 .chapter-icon { font-size: 1.1rem; }
 .chapter-time { font-size: 0.8rem; font-weight: 700; color: var(--c-yellow); min-width: 38px; }
 .chapter-label { font-size: 0.9rem; flex: 1; }

@@ -1,0 +1,48 @@
+{
+  "video": "convolution-kernel.mp4",
+  "sourceUrl": "https://www.bilibili.com/video/BV1de411H7s8",
+  "recognition": "ai-vision-keyframes",
+  "duration": 684,
+  "chapters": [
+    {
+      "time": 0,
+      "label": "卷积运算导入与滑动窗口",
+      "icon": "🎬"
+    },
+    {
+      "time": 60,
+      "label": "单通道二维卷积计算",
+      "icon": "🧮"
+    },
+    {
+      "time": 180,
+      "label": "步长 stride 对输出的影响",
+      "icon": "👣"
+    },
+    {
+      "time": 300,
+      "label": "特征提取与下采样效果",
+      "icon": "🔍"
+    },
+    {
+      "time": 360,
+      "label": "padding 填充与输出尺寸",
+      "icon": "⬚"
+    },
+    {
+      "time": 480,
+      "label": "RGB 多通道输入",
+      "icon": "🌈"
+    },
+    {
+      "time": 540,
+      "label": "多通道卷积核运算",
+      "icon": "🔀"
+    },
+    {
+      "time": 660,
+      "label": "多卷积核生成多张特征图",
+      "icon": "🧩"
+    }
+  ]
+}

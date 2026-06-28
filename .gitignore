@@ -8,6 +8,10 @@ dist/
 *.log
 /package-lock.json
 .vscode/
+.idea/
+*.err
+*.bak
+docs/
 storage/screenshots/*
 storage/exports/*
 java-backend/microcourse-backend/storage/

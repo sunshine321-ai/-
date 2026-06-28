@@ -1,37 +1,48 @@
+import axios from 'axios'
 import { API_BASE } from '@/config/api'
 
 export const getStudyNote = async () => {
   try {
-    const response = await fetch(`${API_BASE}/notes`)
-    const data = await response.json()
+    const response = await axios.get(`${API_BASE}/notes`)
+    const data = response.data
 
-    if (response.ok && data.success) {
-      return { success: true, data: data.data }
+    if (data.code === 200) {
+      return { success: true, data: data.data, msg: data.msg }
     }
 
-    return { success: false, error: data.msg || '获取学习笔记失败' }
+    return {
+      success: false,
+      msg: data.msg || '获取学习笔记失败',
+      error: data.msg || '获取学习笔记失败'
+    }
   } catch (error) {
-    return { success: false, error: error.message }
+    return {
+      success: false,
+      msg: error.response?.data?.msg || error.message || '网络请求失败',
+      error: error.response?.data?.msg || error.message || '网络请求失败'
+    }
   }
 }
 
 export const saveStudyNote = async (content) => {
   try {
-    const response = await fetch(`${API_BASE}/notes`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ content })
-    })
-    const data = await response.json()
+    const response = await axios.put(`${API_BASE}/notes`, { content })
+    const data = response.data
 
-    if (response.ok && data.success) {
-      return { success: true, data: data.data }
+    if (data.code === 200) {
+      return { success: true, data: data.data, msg: data.msg }
     }
 
-    return { success: false, error: data.msg || '保存学习笔记失败' }
+    return {
+      success: false,
+      msg: data.msg || '保存学习笔记失败',
+      error: data.msg || '保存学习笔记失败'
+    }
   } catch (error) {
-    return { success: false, error: error.message }
+    return {
+      success: false,
+      msg: error.response?.data?.msg || error.message || '网络请求失败',
+      error: error.response?.data?.msg || error.message || '网络请求失败'
+    }
   }
 }

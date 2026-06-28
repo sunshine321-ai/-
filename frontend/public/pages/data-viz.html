@@ -194,7 +194,7 @@ async function apiData(path){
   try{
     const response = await fetch('/api/v1/' + path);
     const result = await response.json();
-    return response.ok && result.success ? result.data : null;
+    return response.ok && result.code === 200 ? result.data : null;
   }catch(error){
     console.error('读取学习数据失败：' + path, error);
     return null;

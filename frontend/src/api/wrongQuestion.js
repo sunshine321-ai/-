@@ -1,37 +1,94 @@
+import axios from 'axios'
 import { API_BASE } from '@/config/api'
 
 export const getWrongQuestions = async () => {
   try {
-    const response = await fetch(`${API_BASE}/wrong-questions`)
-    const data = await response.json()
-    return response.ok && data.success
-      ? { success: true, data: data.data }
-      : { success: false, error: data.msg || '读取错题失败' }
+    const response = await axios.get(`${API_BASE}/wrong-questions`)
+    const data = response.data
+
+    if (data.code === 200) {
+      return { success: true, data: data.data, msg: data.msg }
+    }
+
+    return {
+      success: false,
+      msg: data.msg || '读取错题失败',
+      error: data.msg || '读取错题失败'
+    }
   } catch (error) {
-    return { success: false, error: error.message }
+    return {
+      success: false,
+      msg: error.response?.data?.msg || error.message || '网络请求失败',
+      error: error.response?.data?.msg || error.message || '网络请求失败'
+    }
   }
 }
 
 export const createWrongQuestion = async (question) => {
   try {
-    const response = await fetch(`${API_BASE}/wrong-questions`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(question)
-    })
-    const data = await response.json()
-    return response.ok && data.success
-      ? { success: true, data: data.data }
-      : { success: false, error: data.msg || '保存错题失败' }
+    const response = await axios.post(`${API_BASE}/wrong-questions`, question)
+    const data = response.data
+
+    if (data.code === 200) {
+      return { success: true, data: data.data, msg: data.msg }
+    }
+
+    return {
+      success: false,
+      msg: data.msg || '保存错题失败',
+      error: data.msg || '保存错题失败'
+    }
   } catch (error) {
-    return { success: false, error: error.message }
+    return {
+      success: false,
+      msg: error.response?.data?.msg || error.message || '网络请求失败',
+      error: error.response?.data?.msg || error.message || '网络请求失败'
+    }
   }
 }
 
 export const deleteWrongQuestion = async (id) => {
-  const response = await fetch(`${API_BASE}/wrong-questions/${id}`, { method: 'DELETE' })
-  return response.json()
+  try {
+    const response = await axios.delete(`${API_BASE}/wrong-questions/${id}`)
+    const data = response.data
+
+    if (data.code === 200) {
+      return { success: true, data: data.data, msg: data.msg }
+    }
+
+    return {
+      success: false,
+      msg: data.msg || '删除错题失败',
+      error: data.msg || '删除错题失败'
+    }
+  } catch (error) {
+    return {
+      success: false,
+      msg: error.response?.data?.msg || error.message || '网络请求失败',
+      error: error.response?.data?.msg || error.message || '网络请求失败'
+    }
+  }
 }
 
 export const clearWrongQuestions = async () => {
-  const response = await fetch(`${API_BASE}/wrong-questions`, { method: 'DELETE' })
-  return response.json()
+  try {
+    const response = await axios.delete(`${API_BASE}/wrong-questions`)
+    const data = response.data
+
+    if (data.code === 200) {
+      return { success: true, data: data.data, msg: data.msg }
+    }
+
+    return {
+      success: false,
+      msg: data.msg || '清空错题失败',
+      error: data.msg || '清空错题失败'
+    }
+  } catch (error) {
+    return {
+      success: false,
+      msg: error.response?.data?.msg || error.message || '网络请求失败',
+      error: error.response?.data?.msg || error.message || '网络请求失败'
+    }
+  }
 }

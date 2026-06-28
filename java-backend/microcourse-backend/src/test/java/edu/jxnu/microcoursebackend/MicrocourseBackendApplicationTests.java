@@ -3,7 +3,6 @@ package edu.jxnu.microcoursebackend;
 import edu.jxnu.microcoursebackend.pojo.StudyNote;
 import edu.jxnu.microcoursebackend.pojo.ScreenshotNote;
 import edu.jxnu.microcoursebackend.pojo.BookmarkSaveRequest;
-import edu.jxnu.microcoursebackend.pojo.ChatSyncRequest;
 import edu.jxnu.microcoursebackend.pojo.LearningProgressSaveRequest;
 import edu.jxnu.microcoursebackend.pojo.ModuleUsageEventRequest;
 import edu.jxnu.microcoursebackend.pojo.WrongQuestionSaveRequest;
@@ -99,10 +98,9 @@ class MicrocourseBackendApplicationTests {
                         "{\"answers\":2}", 125L));
         var bookmark = bookmarkService.create(1L,
                 new BookmarkSaveRequest(BigDecimal.valueOf(8.5), "测试书签"));
-        chatMessageService.sync(1L, "study", List.of(
-                new ChatSyncRequest.Message("user", "测试问题"),
-                new ChatSyncRequest.Message("assistant", "测试回答")
-        ));
+        chatMessageService.clear(1L, "study");
+        chatMessageService.append(1L, "study", "user", "测试问题");
+        chatMessageService.append(1L, "study", "assistant", "测试回答");
 
         assertNotNull(wrong.getId());
         assertEquals("[\"A\",\"B\"]", wrong.getOptionsJson());
