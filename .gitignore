@@ -11,6 +11,7 @@ dist/
 .idea/
 *.err
 *.bak
+docs/
 storage/screenshots/*
 storage/exports/*
 java-backend/microcourse-backend/storage/
